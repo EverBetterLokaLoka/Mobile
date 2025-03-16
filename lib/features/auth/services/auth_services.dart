@@ -39,7 +39,7 @@ class AuthService {
     }
   }
 
-  Future<void> signUp({
+  Future<String> signUp({
     required BuildContext context,
     required String fullName,
     required String email,
@@ -78,21 +78,21 @@ class AuthService {
         showCustomNotice(
             context, 'Your account has been created successfully.', 'confirm');
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => TermOfService()),
-        );
+        // Navigator.pushReplacement(
+        //   context,
+        //   MaterialPageRoute(builder: (context) => TermOfService()),
+        // );
+        return "Success";
       } else {
         final responseData = jsonDecode(response.body);
-        String errorMessage =
-            responseData["message"] ?? "An unknown error occurred.";
+        String errorMessage = responseData["message"] ?? "An unknown error occurred.";
 
         if (response.statusCode == 409) {
-          errorMessage =
-              "This email is already in use. Please use a different email or log in.";
+          errorMessage = "An account already exits with email the same email address.";
         }
 
         showCustomNotice(context, errorMessage, "notice");
+        return "An account already exits with email the same email address.";
       }
     } on SocketException {
       showCustomNotice(
@@ -105,11 +105,13 @@ class AuthService {
           "Server returned an invalid response. Please try again later.",
           "error");
     } catch (e) {
-      showCustomNotice(context, "An unexpected error occurred: $e", "error");
+      return "An account already exits with email the same email address.";
     } finally {
       onFinish();
     }
+    return "An account already exits with email the same email address.";
   }
+
 
   Future<dynamic> signIn(
       String email, String password, String currentPath) async {
@@ -236,7 +238,7 @@ class AuthService {
       String? token = await getToken();
       if (token == null) {
         print("No token found!");
-        Navigator.pushNamed(context, '/login');
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
         return null;
       }
 

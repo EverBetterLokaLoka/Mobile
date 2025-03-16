@@ -62,20 +62,31 @@ class Menu extends StatelessWidget {
                 ),
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Text(
-                      "Hi, Phát",
-                      style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                      size: 36,
                     ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  Text(
+                    "Menu",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold),
                   ),
                   CircleAvatar(
                     radius: 24,
-                    backgroundImage:
-                        AssetImage('assets/images/avt.png'),
+                    backgroundImage: userGlobal?.avatar != null
+                        ? NetworkImage(userGlobal!.avatar!)
+                        : AssetImage(userGlobal?.gender == 'male'
+                                ? 'assets/images/default-avt-female.png'
+                                : 'assets/images/default-avt-male.png')
+                            as ImageProvider,
                   ),
                 ],
               ),
@@ -85,19 +96,27 @@ class Menu extends StatelessWidget {
                 children: [
                   _buildMenuItem(context, Icons.person, "Account", '/profile'),
                   _buildMenuItem(context, Icons.notifications, "Notification",
-                      '/notification'),
+                      '/notification',
+                      iconColor: Colors.greenAccent),
                   _buildMenuItem(context, Icons.create, "Create Itinerary",
-                      '/create-itinerary'),
+                      '/create-itinerary',
+                      iconColor: Colors.pinkAccent),
                   _buildMenuItem(
-                      context, Icons.flight_takeoff, "My trip", '/my-trip'),
+                      context, Icons.flight_takeoff, "My trip", '/my-trip',
+                      iconColor: Colors.yellow),
                   _buildMenuItem(
-                      context, Icons.photo_library, "Moment", '/moment'),
-                  _buildMenuItem(context, Icons.group, "Friends", '/friends'),
-                  _buildMenuItem(context, Icons.map, "Map", '/map'),
+                      context, Icons.photo_library, "Moment", '/moment',
+                      iconColor: AppColors.orangeColor),
+                  _buildMenuItem(context, Icons.group, "Friends", '/friends',
+                      iconColor: AppColors.primaryColor),
+                  _buildMenuItem(context, Icons.map, "Map", '/map',
+                      iconColor: AppColors.primaryColor),
                   _buildMenuItem(context, Icons.warning, "SOS", '/sos',
                       iconColor: Colors.red),
-                  _buildMenuItem(context, Icons.explore, "Explore", '/explore'),
-                  _buildMenuItem(context, Icons.info, "About Us", '/about-us'),
+                  _buildMenuItem(context, Icons.explore, "Explore", '/explore',
+                      iconColor: Colors.deepOrangeAccent),
+                  _buildMenuItem(context, Icons.info, "About Us", '/about-us',
+                      iconColor: Colors.purpleAccent),
                   _buildMenuItem(context, Icons.exit_to_app, "Sign out", null,
                       iconColor: Colors.red, isLogout: true),
                 ],
@@ -115,19 +134,17 @@ class Menu extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: iconColor),
       title: Text(title, style: TextStyle(fontSize: 16)),
-      onTap: () async{
+      onTap: () async {
         if (isLogout) {
           logout(context);
-        }
-        else if(route == "/sos"){
+        } else if (route == "/sos") {
           final phoneNumber = "tel:$trustPhone";
           if (await canLaunchUrl(Uri.parse(phoneNumber))) {
-        await launchUrl(Uri.parse(phoneNumber));
-        } else {
-        print("Không thể gọi điện");
-        }
-        }
-        else if (route != null) {
+            await launchUrl(Uri.parse(phoneNumber));
+          } else {
+            print("Không thể gọi điện");
+          }
+        } else if (route != null) {
           Navigator.pushNamed(context, route);
         }
       },

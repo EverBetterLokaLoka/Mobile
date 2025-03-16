@@ -6,6 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lokaloka/core/utils/apis.dart';
 import 'package:http/http.dart' as http;
 import 'package:lokaloka/features/auth/services/auth_services.dart';
+import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
+import 'package:lokaloka/features/moments/screens/select_itinerary_screen.dart';
+
+import '../../itinerary/services/itinerary_api.dart';
 
 class CreateMomentScreen extends StatefulWidget {
   final String userName;
@@ -33,6 +37,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   bool _isPickingImage = false;
   List<File> _selectedImages = []; // List to hold selected images
   List<String> _uploadedImageUrls = []; // List to hold uploaded image URLs
+  bool isLoading = true;
+  Map<String, dynamic>? selectedItinerary;
 
   @override
   void initState() {
@@ -142,6 +148,21 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     });
   }
 
+  Future<void> _openItinerarySelector() async {
+    final itinerary = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SelectItineraryScreen()),
+    );
+
+    if (itinerary != null) {
+      setState(() {
+        selectedItinerary = itinerary;
+      });
+    }
+    print(itinerary['id']);
+
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -207,6 +228,10 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
                       // Show uploaded images
                       _buildImageWidgets(),
+                      if (selectedItinerary != null) ...[
+                        SizedBox(height: 16),
+                        _buildTripCard(selectedItinerary!),
+                      ],
                     ],
                   ),
                 ),
@@ -305,8 +330,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                             icon: Icons.map,
                             label: 'Share your itinerary',
                             color: Colors.red,
-                            onTap: () {
-                              // TODO: Implement itinerary sharing
+                            onTap: () async {
+                              await _openItinerarySelector();
                             },
                           ),
 
@@ -448,6 +473,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   }
   Future<void> _publishPost() async {
     String content = _contentController.text;
+    Itinerary itinerary = Itinerary.fromJson(selectedItinerary!);
 
     // Kiểm tra xem người dùng có nhập nội dung hoặc tải ảnh lên không
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
@@ -481,6 +507,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         },
         body: jsonEncode({
           'content': content,
+          'itinerary': itinerary,
           'images': imageList,  // Đảm bảo rằng 'images' là danh sách đối tượng
         }),
       );
@@ -535,6 +562,85 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTripCard(Map<String, dynamic> trip) {
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        elevation: 3,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: trip['locations'] != null && trip['locations'].isNotEmpty
+                    ? Image.network(
+                  trip['locations'].firstWhere(
+                        (location) => location['image'] != null && location['image'].isNotEmpty,
+                    orElse: () => {'image': ''},
+                  )['image'],
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                )
+                    : Container(
+                  width: 80,
+                  height: 80,
+                  color: Colors.grey[300], // Placeholder
+                  child: Icon(Icons.image, color: Colors.grey),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      trip['title'] ?? 'Unknown Title',
+                      style:
+                      TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today,
+                            size: 16, color: Colors.grey),
+                        SizedBox(width: 6),
+                        Text('2 days 1 night',
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.attach_money, size: 16, color: Colors.grey),
+                        SizedBox(width: 6),
+                        Text(trip['price']?.toString() ?? 'N/A',
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.place, size: 16, color: Colors.grey),
+                        SizedBox(width: 6),
+                        Text('${trip['locations']?.length ?? 0} Destinations',
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

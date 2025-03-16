@@ -161,13 +161,26 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
 
     void _showTripDialog(BuildContext context) async {
       String? tripName = await showTripNameDialog(context);
+
       if (tripName != null) {
         widget.itineraryItems.title = tripName;
-        bool? result = await ItineraryApi()
+        int index = 0;
+          for (var location in widget.itineraryItems.locations) {
+            if (index < images.length) {
+              location.image = images[index];
+              index++;
+            }
+        }
+        String? result = await ItineraryApi()
             .saveItinerary(widget.itineraryItems);
-        if (result = true) {
+        if (result == "ok") {
           handleDialog(context);
         }
+        else if(result == "douLiName")
+          {
+            await showCustomNotice(
+                context, "Title already exits. Please enter the difference tile", "noitice");
+          }
         print("User entered trip name: $tripName");
       } else {
         print("User canceled the dialog.");
@@ -329,11 +342,30 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
           ),
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Image.asset(
-              'assets/images/hoiAn.png',
+            child: Image.network(
+              location.image!,
               height: 190,
               width: double.infinity,
               fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 190,
+                  width: double.infinity,
+                  color: Colors.grey[300],
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 190,
+                  width: double.infinity,
+                  color: Colors.grey[300],
+                  child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                );
+              },
             ),
           ),
           Padding(

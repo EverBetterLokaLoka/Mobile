@@ -25,6 +25,7 @@ class _LoginState extends State<Login> {
   bool _obscurePassword = true;
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
+  String message ="";
 
   Future<void> login(BuildContext context) async {
     final email = _emailController.text.trim();
@@ -47,10 +48,9 @@ class _LoginState extends State<Login> {
     }
 
     if (data != null) {
-      print("Login successful! ${data.name}");
       Navigator.pushNamedAndRemoveUntil(context, '/home', (Route<dynamic> route) => false);
     } else {
-      showCustomNotice(context, "Invalid email or password. Please try again.", "error");
+      message = "Invalid email or password. Please try again.";
     }
   }
 
@@ -153,8 +153,15 @@ class _LoginState extends State<Login> {
                             if (value == null || value.isEmpty) {
                               return "Please enter your email";
                             }
-                            if (value.trim().isEmpty) {
-                              return "Must contain characters other than spaces";
+                            if (value.contains(' ')) {
+                              return "Please enter your email.";
+                            }
+                            if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+                                .hasMatch(value)) {
+                              return "Please enter a valid email address.";
+                            }
+                            if (value.isEmpty) {
+                              return "Must contain characters.";
                             }
                             return null;
                           },
@@ -195,8 +202,14 @@ class _LoginState extends State<Login> {
                             if (value == null || value.isEmpty) {
                               return "Please enter your password";
                             }
-                            if (value.trim().isEmpty) {
-                              return "Must contain characters other than spaces";
+                            if (value.contains(' ')) {
+                              return "Invalid email or password. Please try again.";
+                            }
+                            if(message.isNotEmpty){
+                              return message;
+                            }
+                            if (value.isEmpty) {
+                              return "Must contain characters.";
                             }
                             return null;
                           },

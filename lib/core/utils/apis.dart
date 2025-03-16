@@ -4,7 +4,7 @@ import '../../features/auth/services/auth_services.dart';
 import '../constants/url_constant.dart';
 
 class ApiService {
-  final String baseUrl = 'https://2b26-113-176-99-140.ngrok-free.app/api';
+  final String baseUrl = 'https://d5e8-116-105-27-150.ngrok-free.app/api';
 
   final String imgKey = "b49d82fbb2dbf713c012d1441415c8cb4e969a4c";
 
@@ -61,7 +61,7 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;
     } else {
-      throw Exception('Failed to load data: ${response.statusCode}');
+      throw Exception('Failed to load data: ${response.body}');
     }
   }
 
@@ -73,7 +73,7 @@ class ApiService {
     };
   }
 
-  Future<String?> fetchImageUrl(String province) async {
+  Future<String> fetchImageUrl(String province) async {
     var headers = {
       'X-API-KEY': imgKey,
       'Content-Type': 'application/json'
@@ -91,17 +91,16 @@ class ApiService {
 
         if (jsonResponse['images'] != null &&
             jsonResponse['images'].isNotEmpty) {
-          print(jsonResponse['images'][0]['imageUrl']);
           return jsonResponse['images'][0]['imageUrl'];
         }
-        return null;
+        return "";
       } else {
         print('Error: ${response.reasonPhrase}');
-        return null;
+        return "";
       }
     } catch (e) {
       print('Exception: $e');
-      return null;
+      return "";
     }
   }
 }
