@@ -39,6 +39,81 @@ class AuthService {
     }
   }
 
+  // Future<void> signUp({
+  //   required BuildContext context,
+  //   required String fullName,
+  //   required String email,
+  //   required String password,
+  //   required String confirmPassword,
+  //   required VoidCallback onStart,
+  //   required VoidCallback onFinish,
+  // }) async {
+  //   onStart();
+  //
+  //   final data = {
+  //     'full_name': fullName.trim(),
+  //     'email': email.trim(),
+  //     'password': password.trim(),
+  //     'confirm_password': confirmPassword.trim(),
+  //   };
+  //
+  //   try {
+  //     final response = await _apiService.request(
+  //       path: '/auth/register',
+  //       method: 'POST',
+  //       typeUrl: UrlConstant().baseUrl,
+  //       currentPath: '/sign-up',
+  //       data: data,
+  //     );
+  //
+  //     if (response.statusCode == 201) {
+  //       final responseData = jsonDecode(response.body);
+  //       String? token = responseData["token"];
+  //
+  //       if (token == null) {
+  //         throw Exception("Token is null. Please try again.");
+  //       }
+  //
+  //       saveToken(token);
+  //       showCustomNotice(context, 'Your account has been created successfully.', 'confirm');
+  //
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (context) => TermOfService()),
+  //       );
+  //     } else {
+  //       // Nếu phản hồi không thành công, phân tích phản hồi lỗi
+  //       final responseData = jsonDecode(response.body);
+  //       String errorMessage = responseData["message"] ?? "An unknown error occurred.";
+  //
+  //       // Xử lý riêng cho mã trạng thái 409
+  //       if (response.statusCode == 409) {
+  //         errorMessage = responseData["message"] ?? "This email is already in use. Please use a different email or log in.";
+  //       }
+  //
+  //       showCustomNotice(context, errorMessage, "notice");
+  //     }
+  //   } on SocketException {
+  //     showCustomNotice(
+  //         context,
+  //         "No internet connection. Please turn on Wi-Fi or mobile data.",
+  //         "error");
+  //   } on FormatException {
+  //     showCustomNotice(
+  //         context,
+  //         "Server returned an invalid response. Please try again later.",
+  //         "error");
+  //   } catch (e) {
+  //     // Cần kiểm tra xem e có phải là đối tượng Exception không
+  //     String errorMessage = "An unexpected error occurred.";
+  //     if (e is Exception) {
+  //       errorMessage = e.toString();
+  //     }
+  //     showCustomNotice(context, errorMessage, "error");
+  //   } finally {
+  //     onFinish();
+  //   }
+  // }
   Future<void> signUp({
     required BuildContext context,
     required String fullName,
@@ -57,58 +132,43 @@ class AuthService {
       'confirm_password': confirmPassword.trim(),
     };
 
-    try {
-      final response = await _apiService.request(
-        path: '/auth/register',
-        method: 'POST',
-        typeUrl: UrlConstant().baseUrl,
-        currentPath: '/sign-up',
-        data: data,
-      );
+    // Gọi API mà không cần xử lý ngoại lệ tại đây
+    final response = await _apiService.request(
+      path: '/auth/register',
+      method: 'POST',
+      typeUrl: UrlConstant().baseUrl,
+      currentPath: '/sign-up',
+      data: data,
+    );
 
-      if (response.statusCode == 201) {
-        final responseData = jsonDecode(response.body);
-        String? token = responseData["token"];
+    if (response.statusCode == 201) {
+      final responseData = jsonDecode(response.body);
+      String? token = responseData["token"];
 
-        if (token == null) {
-          throw Exception("Token is null. Please try again.");
-        }
-
-        saveToken(token);
-        showCustomNotice(
-            context, 'Your account has been created successfully.', 'confirm');
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => TermOfService()),
-        );
-      } else {
-        final responseData = jsonDecode(response.body);
-        String errorMessage =
-            responseData["message"] ?? "An unknown error occurred.";
-
-        if (response.statusCode == 409) {
-          errorMessage =
-              "This email is already in use. Please use a different email or log in.";
-        }
-
-        showCustomNotice(context, errorMessage, "notice");
+      if (token == null) {
+        throw Exception("Token is null. Please try again.");
       }
-    } on SocketException {
-      showCustomNotice(
-          context,
-          "No internet connection. Please turn on Wi-Fi or mobile data.",
-          "error");
-    } on FormatException {
-      showCustomNotice(
-          context,
-          "Server returned an invalid response. Please try again later.",
-          "error");
-    } catch (e) {
-      showCustomNotice(context, "An unexpected error occurred: $e", "error");
-    } finally {
-      onFinish();
+
+      saveToken(token);
+      showCustomNotice(context, 'Your account has been created successfully.', 'confirm');
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => TermOfService()),
+      );
+    } else {
+      // Phân tích mã trạng thái 409 hoặc những mã lỗi khác
+      final responseData = jsonDecode(response.body);
+      String errorMessage = responseData["message"] ?? "An unknown error occurred.";
+
+      if (response.statusCode == 409) {
+        errorMessage = "An account already exists with the same email address.";
+      }
+
+      showCustomNotice(context, errorMessage, "error");
     }
+
+    onFinish(); // Sau khi hoàn thành
   }
 
   Future<dynamic> signIn(

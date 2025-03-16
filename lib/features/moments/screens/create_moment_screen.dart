@@ -30,7 +30,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   late String uploadUrl;
   bool _isExpanded = false;
   bool _isPickingImage = false;
-  bool _isPublishEnabled = false; // Thêm biến để kiểm soát trạng thái nút "Public"
+  bool _isPublishEnabled = false;
   List<File> _selectedImages = [];
   List<String> _uploadedImageUrls = [];
 
@@ -39,8 +39,6 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     super.initState();
     uploadUrl = "${ApiService().baseUrl}/upload";
     _dragController.addListener(_onDragUpdate);
-
-    // Thêm listener để kiểm tra trạng thái nút "Public"
     _contentController.addListener(_checkPublishButtonStatus);
   }
 
@@ -68,8 +66,11 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   }
 
   void _handlePublish() {
-    _publishPost();
-    Navigator.pop(context);
+    _publishPost().then((success) {
+      if (success) {
+        Navigator.pop(context, true); // Trả về true nếu đã publish thành công
+      }
+    });
   }
 
   Future<void> _pickImages() async {
@@ -113,9 +114,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = await response.stream.bytesToString();
         final jsonResponse = json.decode(responseData);
-        print('Upload successful: ${jsonResponse['data']}');
 
-        // Thêm URL của ảnh đã tải lên vào danh sách và kiểm tra trạng thái nút
         setState(() {
           _uploadedImageUrls.add(jsonResponse['data']);
           _checkPublishButtonStatus();
@@ -124,12 +123,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image uploaded successfully!')));
       } else {
         final responseData = await response.stream.bytesToString();
-        print('Upload failed with status: ${response.statusCode}');
-        print('Response body: $responseData');
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: ${response.statusCode} - $responseData')));
       }
     } catch (e) {
-      print('Error during upload: $e');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
@@ -168,7 +164,6 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         children: [
           Column(
             children: [
-              // User info section
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -193,8 +188,6 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                   ],
                 ),
               ),
-
-              // Content input area
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -208,20 +201,14 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                           border: InputBorder.none,
                         ),
                       ),
-
-                      // Show uploaded images
                       _buildImageWidgets(),
                     ],
                   ),
                 ),
               ),
-
-              // Spacer to make room for the draggable sheet
               SizedBox(height: 120),
             ],
           ),
-
-          // Toggle button for the footer
           Positioned(
             right: 16,
             bottom: _isExpanded
@@ -237,8 +224,6 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
               ),
             ),
           ),
-
-          // Draggable bottom sheet for actions
           DraggableScrollableSheet(
             initialChildSize: 0.1,
             minChildSize: 0.1,
@@ -260,7 +245,6 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Handle for dragging
                     GestureDetector(
                       onTap: _toggleFooter,
                       child: Padding(
@@ -275,46 +259,17 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         ),
                       ),
                     ),
-
-                    // Scrollable content
                     Expanded(
                       child: ListView(
                         controller: scrollController,
                         padding: EdgeInsets.zero,
                         children: [
-                          // Action buttons
                           _buildActionButton(
                             icon: Icons.image,
                             label: 'Choose images',
                             color: Colors.blue,
                             onTap: _pickImages,
                           ),
-                          _buildActionButton(
-                            icon: Icons.emoji_emotions,
-                            label: 'Emotion/activity',
-                            color: Colors.amber,
-                            onTap: () {
-                              // TODO: Implement emotion picker
-                            },
-                          ),
-                          _buildActionButton(
-                            icon: Icons.people,
-                            label: 'Tag friends',
-                            color: Colors.blue,
-                            onTap: () {
-                              // TODO: Implement friend tagging
-                            },
-                          ),
-                          _buildActionButton(
-                            icon: Icons.map,
-                            label: 'Share your itinerary',
-                            color: Colors.red,
-                            onTap: () {
-                              // TODO: Implement itinerary sharing
-                            },
-                          ),
-
-                          // Bottom action buttons
                           Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Row(
@@ -365,97 +320,35 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   }
 
   Widget _buildImageWidgets() {
-    int imageCount = _uploadedImageUrls.length;
-
-    if (imageCount == 0) {
+    if (_uploadedImageUrls.isEmpty) {
       return Container(); // No images to show
-    } else if (imageCount == 1) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: Image.network(
-          _uploadedImageUrls[0],
-          width: double.infinity,
-          height: 200,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else if (imageCount == 2) {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Image.network(
-                _uploadedImageUrls[0],
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Image.network(
-                _uploadedImageUrls[1],
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        ],
-      );
-    } else if (imageCount >= 3) {
-      return Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Image.network(
-                    _uploadedImageUrls[0],
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Image.network(
-                    _uploadedImageUrls[1],
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Image.network(
-              _uploadedImageUrls[2],
-              width: double.infinity,
-              height: 200,
+    }
+
+    return Wrap(
+      spacing: 8.0,
+      children: _uploadedImageUrls.map((url) {
+        return Container(
+          width: 100, // Set width for the images
+          height: 100, // Set height for the images
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: NetworkImage(url),
               fit: BoxFit.cover,
             ),
           ),
-        ],
-      );
-    }
-
-    return Container();
+        );
+      }).toList(),
+    );
   }
 
-  Future<void> _publishPost() async {
+  Future<bool> _publishPost() async {
     String content = _contentController.text;
 
-    // Kiểm tra xem người dùng có nhập nội dung hoặc tải ảnh lên không
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please add some content or images.')));
       }
-      return;
+      return false; // Không publish thành công
     }
 
     String? token = await AuthService().getToken();
@@ -463,15 +356,13 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Token is expired or not found.')));
       }
-      return;
+      return false; // Không publish thành công
     }
 
-    // Dữ liệu gửi lên server
     List<Map<String, dynamic>> imageList = _uploadedImageUrls.map((url) => {
       'content': url,
     }).toList();
 
-    // Bắt đầu gửi yêu cầu đến server
     try {
       final response = await http.post(
         Uri.parse('${ApiService().baseUrl}/posts'),
@@ -485,24 +376,23 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         }),
       );
 
-      // Kiểm tra phản hồi
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final jsonResponse = json.decode(response.body);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post published successfully!')));
         }
-        Navigator.pop(context);
+        return true; // Publish thành công
       } else {
         final responseData = response.body;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to publish post: ${response.statusCode} - $responseData')));
         }
+        return false; // Không publish thành công
       }
     } catch (e) {
-      print('Error during publish: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
+      return false; // Không publish thành công
     }
   }
 

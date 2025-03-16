@@ -211,10 +211,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
           validator: (value) {
-            if (value == null || value.isEmpty) {
+            // Loại bỏ khoảng trắng đầu và cuối chuỗi
+            String trimmedValue = value?.trim() ?? '';
+
+            if (trimmedValue.isEmpty) {
               return "Please enter your $label";
             }
-            if (!RegExp(r'^[a-zA-ZÀ-ỹ\s]+$').hasMatch(value)) {
+            if (!RegExp(r'^[a-zA-ZÀ-ỹ\s]+$').hasMatch(trimmedValue)) {
               return "Only letters are allowed.";
             }
             return null;
@@ -248,7 +251,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             }
             if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
                 .hasMatch(value)) {
-              return "Please enter a valid email address.";
+              return "Invalid email or password. Please try again.";
             }
             return null;
           },
