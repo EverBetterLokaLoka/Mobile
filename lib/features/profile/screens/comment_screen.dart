@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:lokaloka/features/auth/models/user.dart';
 import 'package:lokaloka/features/profile/models/post_modal.dart';
 import 'package:lokaloka/features/profile/services/profile_services.dart';
 
@@ -21,124 +22,164 @@ class _CommentScreenState extends State<CommentScreen> {
   final TextEditingController _commentController = TextEditingController();
   final ProfileService _profileService = ProfileService();
   late List<Comment> _comments;
-  bool _isLoading = false;
   bool _isSending = false;
+  int currentUserId = 0; // User ID of the current user
+  Comment? editingComment; // Hold the comment being edited
 
   @override
   void initState() {
     super.initState();
-    _comments = List.from(widget.post.comments); // Create a copy of the comments list
-
-    // Debug: Print all comments to check content
-    for (var comment in _comments) {
-      print('Comment ID: ${comment.id}, Content: ${comment.content}, User: ${comment.userEmail}');
-    }
+    _comments = List.from(widget.post.comments);
+    _getCurrentUserProfile();
   }
 
-  Future<void> _addComment() async {
-    final content = _commentController.text.trim();
-    if (content.isEmpty) return;
+  Future<void> _getCurrentUserProfile() async {
+    UserNormal? userProfile = await _profileService.getUserProfile();
+    setState(() {
+      currentUserId = userProfile?.id ?? 0;
+    });
+  }
+
+  Future<void> _addOrUpdateComment() async {
+    if (_commentController.text.isEmpty) return;
 
     setState(() {
       _isSending = true;
     });
 
     try {
-      final newComment = await _profileService.addComment(
-        widget.post.id,
-        content,
-      );
+      UserNormal? userProfile = await _profileService.getUserProfile();
+      final int userId = userProfile?.id ?? 0;
+      final String userEmail = userProfile?.email ?? 'user@example.com';
+      final String userName = userProfile?.full_name ?? 'Unknown User';
+      final String avatar = userProfile?.avatar ?? '';
 
-      // Debug: Print the new comment
-      print('New Comment: ID: ${newComment.id}, Content: ${newComment.content}, User: ${newComment.userEmail}');
+      if (editingComment == null) {
+        // Create a new comment
+        Comment newComment = await _profileService.addComment(widget.post.id, _commentController.text);
+        newComment = Comment(
+          id: newComment.id,
+          content: newComment.content,
+          postId: widget.post.id,
+          userId: userId,
+          userEmail: userEmail,
+          userName: userName,
+          createdAt: DateTime.now().toIso8601String(),
+          avatar: avatar,
+          destroyed: null,
+        );
 
-      setState(() {
-        _comments.add(newComment);
-        _commentController.clear();
-      });
+        setState(() {
+          _comments.add(newComment);
+        });
+        widget.onCommentAdded(newComment);
+      } else {
+        // Update the existing comment
+        Comment updatedComment = await _profileService.updateComment(widget.post.id, editingComment!.id, _commentController.text);
+        setState(() {
+          int index = _comments.indexWhere((c) => c.id == editingComment!.id);
+          if (index != -1) {
+            _comments[index] = Comment(
+              id: updatedComment.id,
+              content: updatedComment.content,
+              postId: widget.post.id,
+              userId: userId,
+              userEmail: userEmail,
+              userName: userName,
+              createdAt: updatedComment.createdAt,
+              avatar: avatar,
+              destroyed: null,
+            );
+          }
+        });
+        editingComment = null; // Clear the editing comment variable
+      }
 
-      // Notify parent widget about the new comment
-      widget.onCommentAdded(newComment);
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Comment added successfully')),
-      );
-
-    } catch (e) {
-      print('Error adding comment: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add comment. Please try again.')),
-      );
-    } finally {
+      _commentController.clear();
+      _isSending = false;
+    } catch (error) {
+      print('Error saving comment: $error');
       setState(() {
         _isSending = false;
       });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Comments (${_comments.length})'),
-        elevation: 1,
-      ),
-      body: Column(
-        children: [
-          _buildPostSummary(),
-          Divider(height: 1),
-          Expanded(
-            child: _comments.isEmpty
-                ? Center(child: Text('No comments yet. Be the first to comment!'))
-                : ListView.builder(
-              padding: EdgeInsets.all(16),
-              itemCount: _comments.length,
-              itemBuilder: (context, index) {
-                return _buildCommentItem(_comments[index]);
-              },
+  Future<void> _editComment(Comment comment) async {
+    _commentController.text = comment.content;
+    editingComment = comment; // Set the comment being edited
+
+    final bool? shouldUpdate = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit Comment'),
+          content: TextField(
+            controller: _commentController,
+            decoration: InputDecoration(
+              hintText: 'Edit your comment...',
             ),
           ),
-          _buildCommentInput(),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+                editingComment = null; // Clear the editing comment variable on cancel
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
     );
+
+    if (shouldUpdate == true) {
+      // Call _addOrUpdateComment to handle the update
+      _addOrUpdateComment();
+    }
   }
 
-  Widget _buildPostSummary() {
-    // Get the first letter of email or use a default
-    final String avatarText = widget.post.userEmail.isNotEmpty
-        ? widget.post.userEmail[0].toUpperCase()
-        : '?';
-
-    final String username = widget.post.userName;
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            backgroundImage: NetworkImage(widget.post.avatar),
-            backgroundColor: Colors.blue,
-          ),
-
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  username,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 4),
-              ],
+  Future<void> _deleteComment(int commentId) async {
+    final bool? shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Delete Comment'),
+          content: Text('Are you sure you want to delete this comment?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: Text('Delete'),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
+
+    if (shouldDelete == true) {
+      try {
+        await _profileService.deleteComment(commentId);
+        setState(() {
+          _comments.removeWhere((c) => c.id == commentId);
+        });
+      } catch (error) {
+        print('Error deleting comment: $error');
+      }
+    }
   }
 
   Widget _buildCommentItem(Comment comment) {
@@ -146,17 +187,10 @@ class _CommentScreenState extends State<CommentScreen> {
     try {
       commentDate = DateTime.parse(comment.createdAt);
     } catch (e) {
-      commentDate = DateTime.now(); // Fallback if date parsing fails
+      commentDate = DateTime.now();
     }
 
     final String formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(commentDate);
-
-    // Get the first letter of email or use a default
-    final String avatarText = comment.userEmail.isNotEmpty
-        ? comment.userEmail[0].toUpperCase()
-        : '?';
-
-
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -164,30 +198,34 @@ class _CommentScreenState extends State<CommentScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            backgroundImage: NetworkImage(comment.avatar),
+            backgroundImage: NetworkImage(comment.avatar.isNotEmpty ? comment.avatar : 'https://example.com/default_avatar.png'),
             backgroundColor: Colors.blue,
           ),
-
           SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       comment.userName,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(width: 8),
-                    Text(
-                      formattedDate,
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
+                    if (currentUserId == comment.userId)
+                      IconButton(
+                        icon: Icon(Icons.more_vert, size: 20),
+                        onPressed: () => _showCommentMenu(comment),
+                      ),
                   ],
                 ),
                 SizedBox(height: 4),
-                // Make sure the comment content is clearly visible
+                Text(
+                  formattedDate,
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                SizedBox(height: 4),
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -205,6 +243,41 @@ class _CommentScreenState extends State<CommentScreen> {
         ],
       ),
     );
+  }
+
+  void _showCommentMenu(Comment comment) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: Icon(Icons.edit),
+              title: Text('Edit'),
+              onTap: () {
+                Navigator.pop(context);
+                _editComment(comment);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete, color: Colors.red),
+              title: Text('Delete'),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteComment(comment.id);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
   }
 
   Widget _buildCommentInput() {
@@ -243,7 +316,7 @@ class _CommentScreenState extends State<CommentScreen> {
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _addComment(),
+              onSubmitted: (_) => _addOrUpdateComment(),
             ),
           ),
           SizedBox(width: 8),
@@ -255,7 +328,7 @@ class _CommentScreenState extends State<CommentScreen> {
           )
               : IconButton(
             icon: Icon(Icons.send, color: Theme.of(context).primaryColor),
-            onPressed: _addComment,
+            onPressed: _addOrUpdateComment,
           ),
         ],
       ),
@@ -263,8 +336,29 @@ class _CommentScreenState extends State<CommentScreen> {
   }
 
   @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Comments (${_comments.length})'),
+        elevation: 1,
+      ),
+      body: Column(
+        children: [
+          // Build post summary or any additional UI elements here.
+          Expanded(
+            child: _comments.isEmpty
+                ? Center(child: Text('No comments yet. Be the first to comment!'))
+                : ListView.builder(
+              padding: EdgeInsets.all(16),
+              itemCount: _comments.length,
+              itemBuilder: (context, index) {
+                return _buildCommentItem(_comments[index]);
+              },
+            ),
+          ),
+          _buildCommentInput(),
+        ],
+      ),
+    );
   }
 }

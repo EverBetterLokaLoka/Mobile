@@ -137,7 +137,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Friends', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: const Text('Friends'),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

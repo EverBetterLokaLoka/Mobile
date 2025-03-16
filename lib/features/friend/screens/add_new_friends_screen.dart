@@ -62,6 +62,7 @@ class _AddNewFriendsScreenState extends State<AddNewFriendsScreen> with SingleTi
   Future<void> _addFriend(Friend friend) async {
     try {
       final success = await _friendService.addFriend(friend.id);
+      developer.log("friend id là: " + friend.id.toString());
       if (success) {
         setState(() {
           _suggestedFriends.removeWhere((f) => f.id == friend.id);

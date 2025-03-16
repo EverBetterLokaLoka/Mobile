@@ -63,23 +63,20 @@ class AccountTab extends StatefulWidget {
 class _AccountTabState extends State<AccountTab> {
   bool isEditing = false;
   bool isLoading = false;
-  bool hasChanges = false; // Biến theo dõi thay đổi
+  bool hasChanges = false;
   final _formKey = GlobalKey<FormState>();
   final ProfileService _profileService = ProfileService();
 
-  // Lưu trữ giá trị ban đầu để so sánh
   late Map<String, String> originalValues;
 
   late TextEditingController fullNameController;
   late TextEditingController dobController;
   late TextEditingController genderController;
   late TextEditingController emailController;
-  late TextEditingController passwordController;
   late TextEditingController phoneController;
   late TextEditingController addressController;
   late TextEditingController emergencyController;
 
-  // Các FocusNode để quản lý focus
   final FocusNode fullNameFocus = FocusNode();
   final FocusNode dobFocus = FocusNode();
   final FocusNode genderFocus = FocusNode();
@@ -98,16 +95,13 @@ class _AccountTabState extends State<AccountTab> {
     dobController = TextEditingController(text: widget.user.dob ?? '');
     genderController = TextEditingController(text: widget.user.gender ?? '');
     emailController = TextEditingController(text: widget.user.email);
-    passwordController = TextEditingController();
     phoneController = TextEditingController(text: widget.user.phone);
     addressController = TextEditingController(text: widget.user.address);
     emergencyController = TextEditingController(text: widget.user.emergency_numbers);
 
-    // Thêm listeners để phát hiện thay đổi
     _addChangeListeners();
   }
 
-  // Lưu trữ giá trị ban đầu khi bắt đầu chỉnh sửa
   void _saveOriginalValues() {
     originalValues = {
       'fullName': widget.user.full_name ?? '',
@@ -119,9 +113,7 @@ class _AccountTabState extends State<AccountTab> {
     };
   }
 
-  // Thêm listeners cho các controllers
   void _addChangeListeners() {
-    // Xóa listeners cũ nếu có
     fullNameController.removeListener(_checkForChanges);
     dobController.removeListener(_checkForChanges);
     genderController.removeListener(_checkForChanges);
@@ -129,7 +121,6 @@ class _AccountTabState extends State<AccountTab> {
     addressController.removeListener(_checkForChanges);
     emergencyController.removeListener(_checkForChanges);
 
-    // Thêm listeners mới
     fullNameController.addListener(_checkForChanges);
     dobController.addListener(_checkForChanges);
     genderController.addListener(_checkForChanges);
@@ -138,7 +129,6 @@ class _AccountTabState extends State<AccountTab> {
     emergencyController.addListener(_checkForChanges);
   }
 
-  // Kiểm tra xem có thay đổi nào không
   void _checkForChanges() {
     if (!isEditing) return;
 
@@ -157,7 +147,6 @@ class _AccountTabState extends State<AccountTab> {
     }
   }
 
-  // Hàm hiển thị thông báo tùy chỉnh
   void showCustomNotification({
     required BuildContext context,
     required Widget notification,
@@ -178,68 +167,54 @@ class _AccountTabState extends State<AccountTab> {
 
     Overlay.of(context).insert(entry);
 
-    // Xóa thông báo sau khoảng thời gian
     Future.delayed(duration, () {
       entry?.remove();
     });
   }
 
-  // Validate số điện thoại
   String? validatePhone(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Phone number is required';
+    if (value != null && value.isNotEmpty) {
+      // Kiểm tra định dạng số điện thoại
+      if (!RegExp(r'^(0[0-9]{2}-[0-9]{7})$').hasMatch(value)) {
+        return 'Enter a valid phone number (format: 0xx-xxxxxxx)';
+      }
     }
-
-    // Kiểm tra số điện thoại chỉ chứa số và có độ dài hợp lệ
-    if (!RegExp(r'^[0-9]{10,11}$').hasMatch(value)) {
-      return 'Enter a valid phone number (10-11 digits)';
-    }
-
-    return null;
+    return null; // Trả về null nếu không có lỗi
   }
 
-  // Validate họ tên
   String? validateFullName(String? value) {
     if (value == null || value.isEmpty) {
       return 'Full name is required';
     }
-
     if (value.length < 2) {
       return 'Name must be at least 2 characters';
     }
-
     return null;
   }
 
-  // Validate ngày sinh
   String? validateDob(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Date of birth is required';
-    }
+    if (value != null && value.isNotEmpty) {
+      try {
+        final date = DateFormat('yyyy-MM-dd').parse(value);
+        final now = DateTime.now();
 
-    try {
-      final date = DateFormat('yyyy-MM-dd').parse(value);
-      final now = DateTime.now();
+        if (date.isAfter(now)) {
+          return 'Date of birth cannot be in the future';
+        }
 
-      if (date.isAfter(now)) {
-        return 'Date of birth cannot be in the future';
+        final minimumAge = 18;
+        final minimumDate = DateTime(now.year - minimumAge, now.month, now.day);
+
+        if (date.isAfter(minimumDate)) {
+          return 'You must be at least $minimumAge years old';
+        }
+      } catch (e) {
+        return 'Enter a valid date (YYYY-MM-DD)';
       }
-
-      // Kiểm tra tuổi tối thiểu (ví dụ: 18 tuổi)
-      final minimumAge = 18;
-      final minimumDate = DateTime(now.year - minimumAge, now.month, now.day);
-
-      if (date.isAfter(minimumDate)) {
-        return 'You must be at least $minimumAge years old';
-      }
-    } catch (e) {
-      return 'Enter a valid date (YYYY-MM-DD)';
     }
-
-    return null;
+    return null; // Trả về null nếu không có lỗi
   }
 
-  // Validate giới tính
   String? validateGender(String? value) {
     if (value == null || value.isEmpty) {
       return 'Gender is required';
@@ -247,26 +222,18 @@ class _AccountTabState extends State<AccountTab> {
     return null;
   }
 
-  // Validate địa chỉ
   String? validateAddress(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Address is required';
-    }
-
-    if (value.length < 5) {
+    if (value != null && value.isNotEmpty && value.length < 5) {
       return 'Address must be at least 5 characters';
     }
-
     return null;
   }
 
-  // Validate số điện thoại khẩn cấp
   String? validateEmergencyNumber(String? value) {
     if (value == null || value.isEmpty) {
       return null; // Không bắt buộc
     }
 
-    // Kiểm tra số điện thoại chỉ chứa số và có độ dài hợp lệ
     if (!RegExp(r'^[0-9]{10,11}$').hasMatch(value)) {
       return 'Enter a valid emergency number (10-11 digits)';
     }
@@ -289,9 +256,7 @@ class _AccountTabState extends State<AccountTab> {
   }
 
   Future<void> _handleUpdate() async {
-    // Kiểm tra xem form có hợp lệ không và có thay đổi không
     if (!_formKey.currentState!.validate()) {
-      // Hiển thị thông báo lỗi validate
       showCustomNotification(
         context: context,
         notification: CustomNotification(
@@ -313,7 +278,6 @@ class _AccountTabState extends State<AccountTab> {
       return;
     }
 
-    // Hiển thị loading indicator
     setState(() => isLoading = true);
 
     try {
@@ -330,12 +294,9 @@ class _AccountTabState extends State<AccountTab> {
         avatar: widget.user.avatar,
       );
 
-      // Gọi API để cập nhật thông tin
       final result = await _profileService.updateUserProfile(updatedUser);
 
-      // Kiểm tra kết quả từ server
       if (result is bool && result) {
-        // Cập nhật thành công
         showCustomNotification(
           context: context,
           notification: CustomNotification(
@@ -349,10 +310,7 @@ class _AccountTabState extends State<AccountTab> {
           hasChanges = false;
         });
       } else {
-        // Server trả về lỗi cụ thể
         String errorMessage = 'An error occurred while updating your profile. Please try again later.';
-
-
         showCustomNotification(
           context: context,
           notification: CustomNotification(
@@ -362,7 +320,6 @@ class _AccountTabState extends State<AccountTab> {
         );
       }
     } catch (e) {
-      // Xử lý exception
       print('Error updating profile: $e');
       showCustomNotification(
         context: context,
@@ -372,7 +329,6 @@ class _AccountTabState extends State<AccountTab> {
         ),
       );
     } finally {
-      // Ẩn loading indicator
       setState(() => isLoading = false);
     }
   }
@@ -401,7 +357,7 @@ class _AccountTabState extends State<AccountTab> {
                     "Phone",
                     phoneController,
                     isEditing,
-                    true,
+                    false, // Không yêu cầu
                     validator: validatePhone,
                     focusNode: phoneFocus,
                     keyboardType: TextInputType.phone,
@@ -410,8 +366,7 @@ class _AccountTabState extends State<AccountTab> {
                     "Address",
                     addressController,
                     isEditing,
-                    true,
-                    validator: validateAddress,
+                    false, // Không yêu cầu
                     focusNode: addressFocus,
                   ),
                   _buildFormField(
@@ -423,6 +378,7 @@ class _AccountTabState extends State<AccountTab> {
                     focusNode: emergencyFocus,
                     keyboardType: TextInputType.phone,
                   ),
+                  SizedBox(height: 20),
                   _buildActionButtons(),
                   SizedBox(height: 16),
                   _buildLogoutButton(),
@@ -436,81 +392,72 @@ class _AccountTabState extends State<AccountTab> {
   }
 
   Widget _buildDateAndGenderRow() {
-    return Row(
-      children: [
-        Expanded(child: _buildDateField('Date of Birth', dobController, isEditing)),
-        SizedBox(width: 10),
-        Expanded(child: _buildGenderField()),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _buildDateField('Date of Birth', dobController, isEditing)),
+          SizedBox(width: 16), // Space between date and gender fields
+          Expanded(child: _buildGenderField()),
+        ],
+      ),
     );
   }
 
   Widget _buildGenderField() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Gender', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: 160,
-            height: 50,
-            child: DropdownButtonFormField<String>(
-              value: genderController.text.isNotEmpty ? genderController.text : null,
-              items: ['MALE', 'FEMALE', 'OTHER'].map((gender) {
-                return DropdownMenuItem(value: gender, child: Text(gender));
-              }).toList(),
-              onChanged: isEditing ? (value) {
-                setState(() => genderController.text = value ?? '');
-              } : null,
-              validator: validateGender,
-              focusNode: genderFocus,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.black.withValues(red: 0,
-                    green: 0,
-                    blue: 0,
-                    alpha: 50,)),
-                ),
-                contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                errorStyle: TextStyle(color: Colors.red),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Gender', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 50,
+          child: DropdownButtonFormField<String>(
+            value: genderController.text.isNotEmpty ? genderController.text : null,
+            items: ['MALE', 'FEMALE', 'OTHER'].map((gender) {
+              return DropdownMenuItem(value: gender, child: Text(gender));
+            }).toList(),
+            onChanged: isEditing ? (value) {
+              setState(() => genderController.text = value ?? '');
+            } : null,
+            validator: validateGender,
+            focusNode: genderFocus,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              errorStyle: TextStyle(color: Colors.red),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildDateField(String label, TextEditingController controller, bool enabled) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(26, 0, 0, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          SizedBox(
-            width: 160,
-            height: 50,
-            child: TextFormField(
-              controller: controller,
-              enabled: enabled,
-              focusNode: dobFocus,
-              validator: validateDob,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                suffixIcon: enabled ? IconButton(icon: Icon(Icons.calendar_today), onPressed: _selectDate) : null,
-                errorStyle: TextStyle(color: Colors.red),
-              ),
-              readOnly: true, // Chỉ cho phép chọn từ date picker
-              onTap: enabled ? _selectDate : null,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 50,
+          child: TextFormField(
+            controller: controller,
+            enabled: enabled,
+            focusNode: dobFocus,
+            validator: validateDob,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              suffixIcon: enabled ? IconButton(icon: Icon(Icons.calendar_today), onPressed: _selectDate) : null,
+              errorStyle: TextStyle(color: Colors.red),
             ),
+            readOnly: true,
+            onTap: enabled ? _selectDate : null,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -531,13 +478,10 @@ class _AccountTabState extends State<AccountTab> {
           Row(
             children: [
               Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
-              if (isRequired)
-                Text('*', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 4),
           SizedBox(
-            width: 360,
             height: 50,
             child: TextFormField(
               controller: controller,
@@ -562,19 +506,19 @@ class _AccountTabState extends State<AccountTab> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
-        width: 360,
+        width: double.infinity,
         height: 50,
         child: ElevatedButton(
           onPressed: _handleLogout,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.orange,
             textStyle: TextStyle(color: Colors.white),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
               side: BorderSide(width: 0, color: Colors.white),
             ),
           ),
-          child: Text("Sign out",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold )),
+          child: Text("Sign out", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -688,7 +632,7 @@ class _AccountTabState extends State<AccountTab> {
                 ),
                 minimumSize: Size(130, 50),
               ),
-              child: Text("Cancel",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold )),
+              child: Text("Cancel", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
           SizedBox(width: 20),
@@ -696,40 +640,39 @@ class _AccountTabState extends State<AccountTab> {
             child: isLoading
                 ? Center(child: CircularProgressIndicator())
                 : ElevatedButton(
-              onPressed: hasChanges ? _handleUpdate : null, // Vô hiệu hóa nút khi không có thay đổi
+              onPressed: hasChanges ? _handleUpdate : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.teal,
-                disabledBackgroundColor: Colors.teal.withAlpha(120), // Màu khi bị vô hiệu hóa
+                disabledBackgroundColor: Colors.teal.withAlpha(120),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                   side: BorderSide(width: 0, color: Colors.white),
                 ),
                 minimumSize: Size(130, 50),
               ),
-              child: Text("Save",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold )),
+              child: Text("Save", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
       )
           : SizedBox(
-        width: 360,
+        width: double.infinity,
         height: 50,
         child: ElevatedButton(
           onPressed: () {
             setState(() {
               isEditing = true;
-              hasChanges = false; // Reset trạng thái thay đổi
-              _saveOriginalValues(); // Lưu giá trị ban đầu để so sánh
+              hasChanges = false;
+              _saveOriginalValues();
             });
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.grey[800],
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
-              side: BorderSide(width: 0, color: Colors.white),
             ),
           ),
-          child: Text("Update",style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold )),
+          child: Text("Update", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -737,7 +680,6 @@ class _AccountTabState extends State<AccountTab> {
 
   @override
   void dispose() {
-    // Xóa tất cả listeners khi widget bị hủy
     fullNameController.removeListener(_checkForChanges);
     dobController.removeListener(_checkForChanges);
     genderController.removeListener(_checkForChanges);
@@ -745,17 +687,14 @@ class _AccountTabState extends State<AccountTab> {
     addressController.removeListener(_checkForChanges);
     emergencyController.removeListener(_checkForChanges);
 
-    // Giải phóng controllers
     fullNameController.dispose();
     dobController.dispose();
     genderController.dispose();
     emailController.dispose();
-    passwordController.dispose();
     phoneController.dispose();
     addressController.dispose();
     emergencyController.dispose();
 
-    // Giải phóng focus nodes
     fullNameFocus.dispose();
     dobFocus.dispose();
     genderFocus.dispose();

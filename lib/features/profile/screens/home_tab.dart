@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lokaloka/core/constants/url_constant.dart';
+import 'package:lokaloka/features/auth/models/user.dart';
 import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/moments/screens/create_moment_screen.dart';
 import 'package:lokaloka/features/moments/screens/edit_post.dart';
@@ -9,6 +10,7 @@ import 'package:lokaloka/features/profile/services/profile_services.dart';
 import 'package:lokaloka/features/profile/screens/comment_screen.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lokaloka/widgets/notice_widget.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 
@@ -24,6 +26,7 @@ class _HomeTabState extends State<HomeTab> {
   List<Post> _posts = [];
   bool _isRefreshing = false;
   int? _currentUserId;
+  UserNormal? _currentUserProfile; // Biến để lưu thông tin người dùng.
   Set<int> _loadingLikes = {};
   final ImagePicker _picker = ImagePicker();
 
@@ -42,9 +45,21 @@ class _HomeTabState extends State<HomeTab> {
         setState(() {
           _currentUserId = int.tryParse(decodedToken['id'].toString());
         });
+        _getCurrentUserProfile(); // Gọi hàm để lấy thông tin người dùng.
       }
     } catch (e) {
       print('Error getting current user ID: $e');
+    }
+  }
+
+  Future<void> _getCurrentUserProfile() async {
+    try {
+      // Gọi dịch vụ để lấy thông tin người dùng
+      _currentUserProfile = await _profileService.getUserProfile();
+      // Cập nhật giao diện nếu cần
+      setState(() {});
+    } catch (e) {
+      print('Error getting user profile: $e');
     }
   }
 
@@ -78,44 +93,94 @@ class _HomeTabState extends State<HomeTab> {
       return;
     }
 
+    // Immediate local state update
+    bool isLiked = post.likes.any((like) => like.userId == _currentUserId);
+    final List<Like> updatedLikes = List.from(post.likes);
+    final int updatedLikeCount = isLiked ? post.likeCount - 1 : post.likeCount + 1;
+
     setState(() {
-      _loadingLikes.add(post.id);
+      if (isLiked) {
+        updatedLikes.removeWhere((like) => like.userId == _currentUserId);
+      } else {
+        updatedLikes.add(Like(
+          id: 0, // Temporary ID; the server will handle ID assignment
+          postId: post.id,
+          userId: _currentUserId!,
+          userEmail: "", // Bạn có thể lấy từ người dùng hoặc token nếu cần
+          createdAt: DateTime.now(),
+        ));
+      }
+
+      // Update the post locally without affecting its other content
+      final index = _posts.indexWhere((p) => p.id == post.id);
+      if (index != -1) {
+        _posts[index] = post.copyWith(
+          likes: updatedLikes,
+          likeCount: updatedLikeCount,
+        );
+      }
     });
 
+    // Now make the API call to actually toggle the like
     try {
-      final updatedPost = await _profileService.toggleLike(post.id);
-      setState(() {
-        final index = _posts.indexWhere((p) => p.id == post.id);
-        if (index != -1) {
-          _posts[index] = updatedPost;
-        }
-      });
+      await _profileService.toggleLike(post.id);
     } catch (e) {
       print('Error toggling like: $e');
+
+      // Handling failure scenario: revert local state to original
+      setState(() {
+        if (isLiked) {
+          updatedLikes.add(Like(
+            id: 0, // Temporary ID for the revert scenario
+            postId: post.id,
+            userId: _currentUserId!,
+            userEmail: "", // Đặt đúng email nếu cần
+            createdAt: DateTime.now(),
+          ));
+        } else {
+          updatedLikes.removeWhere((like) => like.userId == _currentUserId);
+        }
+
+        // Revert the post state if the API call fails
+        final revertIndex = _posts.indexWhere((p) => p.id == post.id);
+        if (revertIndex != -1) {
+          _posts[revertIndex] = post.copyWith(
+            likes: updatedLikes,
+            likeCount: isLiked ? updatedLikeCount + 1 : updatedLikeCount - 1,
+          );
+        }
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update like status')),
       );
-    } finally {
-      setState(() {
-        _loadingLikes.remove(post.id);
-      });
     }
   }
 
   Future<void> _handleDeletePost(int postId) async {
-    try {
-      await _profileService.deletePost(postId);
-      setState(() {
-        _posts.removeWhere((post) => post.id == postId);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Post deleted successfully')),
-      );
-    } catch (e) {
-      print('Failed to delete post: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete post')),
-      );
+    // Hiển thị thông báo xác nhận xóa
+    final confirmed = await showCustomNotice(
+        context,
+        "Are you sure you want to delete this post?",
+        "confirm"
+    );
+
+    // Nếu người dùng xác nhận xóa
+    if (confirmed ?? false) {
+      try {
+        await _profileService.deletePost(postId);
+        setState(() {
+          _posts.removeWhere((post) => post.id == postId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Post deleted successfully')),
+        );
+      } catch (e) {
+        print('Failed to delete post: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete post')),
+        );
+      }
     }
   }
 
@@ -239,18 +304,26 @@ class _HomeTabState extends State<HomeTab> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Chuyển đến màn hình tạo bài viết
-          Navigator.push(
+        onPressed: () async {
+          // Chuyển đến màn hình tạo bài viết với thông tin người dùng
+          final newPost = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CreateMomentScreen(
-                userName: "Tên người dùng",  // Thay thế bằng tên người dùng thực tế
-                userLocation: "Địa điểm người dùng",  // Thay thế bằng địa điểm người dùng thực tế
-                userAvatar: "URL avatar người dùng",  // URL thực tế của avatar người dùng
+                userName: _currentUserProfile?.full_name ?? "Tên người dùng",
+                userLocation: "Địa điểm người dùng", // Thay thế bằng địa điểm người dùng thực tế
+                userAvatar: _currentUserProfile?.avatar ?? '', // URL thực tế của avatar người dùng
               ),
             ),
           );
+
+          // Nếu có bài viết mới được tạo thành công
+          if (newPost != null) {
+            setState(() {
+              _posts.insert(0, newPost); // Thêm bài viết mới vào đầu danh sách
+            });
+            HomeTab();
+          }
         },
         child: Icon(Icons.add),
       ),
@@ -305,32 +378,30 @@ class _HomeTabState extends State<HomeTab> {
                         Text(formattedDate, style: TextStyle(color: Colors.grey, fontSize: 12))
                       ],
                     )
-
                   ],
                 ),
-                if (post.userId == _currentUserId)
-                  PopupMenuButton<String>(
-                    icon: Icon(Icons.more_vert),
-                    itemBuilder: (BuildContext context) {
-                      return [
-                        const PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Text('Edit'),
-                        ),
-                        const PopupMenuItem<String>(
-                          value: 'delete',
-                          child: Text('Delete'),
-                        ),
-                      ];
-                    },
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        _handleDeletePost(post.id);
-                      } else if (value == 'edit') {
-                        _handleEditPost(post);
-                      }
-                    },
-                  ),
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert),
+                  itemBuilder: (BuildContext context) {
+                    return [
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Text('Edit'),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
+                    ];
+                  },
+                  onSelected: (value) {
+                    if (value == 'delete') {
+                      _handleDeletePost(post.id);
+                    } else if (value == 'edit') {
+                      _handleEditPost(post);
+                    }
+                  },
+                ),
               ],
             ),
             SizedBox(height: 10),
@@ -386,20 +457,7 @@ class _HomeTabState extends State<HomeTab> {
                     ],
                   ),
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.share),
-                      onPressed: () {
-                        // Implement share functionality
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: BoxConstraints(),
-                    ),
-                    SizedBox(width: 5),
-                    Text('0'),
-                  ],
-                ),
+
               ],
             ),
             if (post.comments.isNotEmpty) _buildLatestComment(post.comments.last),
@@ -539,5 +597,4 @@ class _HomeTabState extends State<HomeTab> {
       ),
     );
   }
-
 }

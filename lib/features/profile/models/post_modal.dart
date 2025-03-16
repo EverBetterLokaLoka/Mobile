@@ -33,7 +33,6 @@ class Post {
 
   Post copyWith({
     int? id,
-    String? title,
     String? content,
     int? userId,
     String? userEmail,
@@ -70,15 +69,21 @@ class Post {
     return Post(
       id: json['id'] ?? 0,
       content: json['content'] ?? '',
-      userId: json['user_id'] ?? 0,
+      userId: json['userId'] ?? 0,
       userEmail: json['userEmail'] ?? '',
       userName: json['userName'] ?? '',
       createdAt: json['createdAt'] ?? DateTime.now().toIso8601String(),
       updatedAt: json['updatedAt'],
       avatar: json['avatar'] ?? '',
-      comments: (json['comments'] as List<dynamic>?)?.map((comment) => Comment.fromJson(comment)).toList() ?? [],
-      likes: (json['likes'] as List<dynamic>?)?.map((like) => Like.fromJson(like)).toList() ?? [],
-      images: (json['images'] as List<dynamic>?)?.map((image) => PostImage.fromJson(image)).toList() ?? [],
+      comments: (json['comments'] as List<dynamic>?)
+          ?.map((comment) => Comment.fromJson(comment))
+          .toList() ?? [],
+      likes: (json['likes'] as List<dynamic>?)
+          ?.map((like) => Like.fromJson(like))
+          .toList() ?? [],
+      images: (json['images'] as List<dynamic>?)
+          ?.map((image) => PostImage.fromJson(image))
+          .toList() ?? [],
       likeCount: json['likeCount'] ?? 0,
       commentCount: json['commentCount'] ?? 0,
       destroyed: json['destroyed'] ?? false,
@@ -111,10 +116,10 @@ class Comment {
   final int postId;
   final int userId;
   final String userEmail;
-  final  String userName;
+  final String userName;
   final String createdAt;
   final String? updatedAt;
-  final bool destroyed;
+  final bool? destroyed;
   final String avatar;
 
   Comment({
@@ -127,7 +132,7 @@ class Comment {
     required this.createdAt,
     this.updatedAt,
     required this.destroyed,
-    required this.avatar
+    required this.avatar,
   });
 
   factory Comment.fromJson(Map<String, dynamic> json) {
@@ -141,9 +146,10 @@ class Comment {
       createdAt: json['createdAt'] ?? DateTime.now().toIso8601String(),
       updatedAt: json['updatedAt'],
       destroyed: json['destroyed'] ?? false,
-      avatar: json['avatar']?? ''
+      avatar: json['avatar'] ?? '',
     );
   }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -198,7 +204,6 @@ class Like {
   }
 }
 
-
 class PostImage {
   final int id;
   final String content;
@@ -249,6 +254,16 @@ class PostImage {
     return {
       'id': id,
       'content': content,
+      'shares': shares,
+      'locationId': locationId,
+      'userId': userId,
+      'postId': postId,
+      'mapId': mapId,
+      'activityId': activityId,
+      'userEmail': userEmail,
+      'type': type,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
     };
   }
 }

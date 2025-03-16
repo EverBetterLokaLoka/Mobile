@@ -14,6 +14,7 @@ class ProfileService {
   String baseUrl = ApiService().baseUrl;
   final ApiService _apiService = ApiService();
 
+  // Fetch user profile
   Future<UserNormal?> getUserProfile() async {
     try {
       String? token = await AuthService().getToken();
@@ -49,6 +50,7 @@ class ProfileService {
     }
   }
 
+  // Update user profile
   Future<bool> updateUserProfile(UserNormal user) async {
     try {
       String? token = await AuthService().getToken();
@@ -92,6 +94,7 @@ class ProfileService {
     }
   }
 
+  // Fetch posts
   Future<List<Post>> fetchPosts() async {
     try {
       String? token = await AuthService().getToken();
@@ -119,6 +122,7 @@ class ProfileService {
     }
   }
 
+  // Fetch all posts
   Future<List<Post>> fetchAllPosts() async {
     try {
       String? token = await AuthService().getToken();
@@ -146,6 +150,7 @@ class ProfileService {
     }
   }
 
+  // Toggle like on a post
   Future<Post> toggleLike(int postId) async {
     try {
       String? token = await AuthService().getToken();
@@ -172,6 +177,8 @@ class ProfileService {
       rethrow;
     }
   }
+
+  // Add comment to a post
   Future<Comment> addComment(int postId, String content) async {
     try {
       String? token = await AuthService().getToken();
@@ -243,6 +250,65 @@ class ProfileService {
     }
   }
 
+  // New: Update comment
+  Future<Comment> updateComment(int postId, int commentId, String content) async {
+    try {
+      String? token = await AuthService().getToken();
+      if (token == null) {
+        throw Exception('Authentication token is missing. Please log in again.');
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/posts/$postId/comments/$commentId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'content': content,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        return Comment.fromJson(responseData);
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized: Please log in again');
+      } else {
+        throw Exception('Failed to update comment: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error while updating comment: $e');
+      rethrow;
+    }
+  }
+
+  // New: Delete comment
+  Future<void> deleteComment(int commentId) async {
+    try {
+      String? token = await AuthService().getToken();
+      if (token == null) {
+        throw Exception('Authentication token is missing. Please log in again.');
+      }
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/posts/comments/$commentId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode != 204) {
+        throw Exception('Failed to delete comment: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error while deleting comment: $e');
+      rethrow;
+    }
+  }
+
+  // Fetch user by ID
   Future<UserNormal?> getUserById(int userId) async {
     try {
       String? token = await AuthService().getToken();
@@ -272,6 +338,7 @@ class ProfileService {
     }
   }
 
+  // Fetch user name
   Future<String> getUserName() async {
     try {
       UserNormal? user = await getUserProfile();
@@ -281,11 +348,13 @@ class ProfileService {
       return 'Unknown User';
     }
   }
+
+  // Delete post
   Future<void> deletePost(int postId) async {
     final String? token = await AuthService().getToken(); // Fetch the Bearer token
 
     final response = await http.delete(
-      Uri.parse('$baseUrl/posts/$postId'), // Sửa đường dẫn nếu cần
+      Uri.parse('$baseUrl/posts/$postId'), // Adjust the URL if needed
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -294,6 +363,34 @@ class ProfileService {
 
     if (response.statusCode != 204) {
       throw Exception('Failed to delete post');
+    }
+  }
+
+  // Fetch comments for a post
+  Future<List<Comment>> getComments(int postId) async {
+    try {
+      String? token = await AuthService().getToken();
+      if (token == null) {
+        throw Exception('Authentication token is missing. Please log in again.');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/posts/$postId/comments'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        List<dynamic> jsonData = jsonDecode(response.body);
+        return jsonData.map((comment) => Comment.fromJson(comment)).toList();
+      } else {
+        throw Exception('Failed to load comments: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error while fetching comments: $e');
+      rethrow;
     }
   }
 }

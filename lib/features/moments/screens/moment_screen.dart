@@ -7,6 +7,8 @@ import 'package:lokaloka/features/moments/screens/create_moment_screen.dart';
 import 'package:lokaloka/features/profile/models/post_modal.dart';
 import 'package:lokaloka/features/profile/services/profile_services.dart';
 import 'package:lokaloka/features/profile/screens/comment_screen.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 
 class MomentsScreen extends StatefulWidget {
   @override
@@ -34,12 +36,14 @@ class _MomentsScreenState extends State<MomentsScreen> {
 
     try {
       _currentUser = await _profileService.getUserProfile();
-      setState(() => _isLoadingUser = false);
       _posts = await _profileService.fetchAllPosts();
     } catch (e) {
       print('Error loading data: $e');
     } finally {
-      setState(() => _isRefreshing = false);
+      setState(() {
+        _isLoadingUser = false;
+        _isRefreshing = false;
+      });
     }
   }
 
@@ -71,39 +75,56 @@ class _MomentsScreenState extends State<MomentsScreen> {
 
     final bool isLiked = post.likes.any((like) => like.userId == _currentUser!.id);
     final List<Like> updatedLikes = List.from(post.likes);
-
-    if (isLiked) {
-      updatedLikes.removeWhere((like) => like.userId == _currentUser!.id);
-    } else {
-      updatedLikes.add(Like(
-        id: 0, // Giá trị tạm thời, server sẽ tạo ID thực
-        postId: post.id,
-        userId: _currentUser!.id,
-        userEmail: _currentUser!.email, // Đảm bảo UserNormal có email
-        createdAt: DateTime.now(),
-      ));
-    }
+    final int updatedLikeCount = isLiked ? post.likeCount - 1 : post.likeCount + 1;
 
     setState(() {
+      if (isLiked) {
+        updatedLikes.removeWhere((like) => like.userId == _currentUser!.id);
+      } else {
+        updatedLikes.add(Like(
+          id: 0,
+          postId: post.id,
+          userId: _currentUser!.id,
+          userEmail: _currentUser!.email,
+          createdAt: DateTime.now(),
+        ));
+      }
+
       final index = _posts.indexWhere((p) => p.id == post.id);
       if (index != -1) {
         _posts[index] = post.copyWith(
           likes: updatedLikes,
-          likeCount: isLiked ? post.likeCount - 1 : post.likeCount + 1,
+          likeCount: updatedLikeCount,
         );
       }
     });
 
     try {
-      final updatedPost = await _profileService.toggleLike(post.id);
+      await _profileService.toggleLike(post.id);
+    } catch (e) {
+      print('Error toggling like: $e');
       setState(() {
         final index = _posts.indexWhere((p) => p.id == post.id);
         if (index != -1) {
-          _posts[index] = updatedPost; // Cập nhật lại từ server
+          if (isLiked) {
+            updatedLikes.add(Like(
+              id: 0,
+              postId: post.id,
+              userId: _currentUser!.id,
+              userEmail: _currentUser!.email,
+              createdAt: DateTime.now(),
+            ));
+          } else {
+            updatedLikes.removeWhere((like) => like.userId == _currentUser!.id);
+          }
+
+          _posts[index] = post.copyWith(
+            likes: updatedLikes,
+            likeCount: isLiked ? updatedLikeCount + 1 : updatedLikeCount - 1,
+          );
         }
       });
-    } catch (e) {
-      print('Error toggling like: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update like status')),
       );
@@ -159,10 +180,6 @@ class _MomentsScreenState extends State<MomentsScreen> {
               currentUserId: _currentUser?.id ?? 0,
               onCommentAdded: _handleCommentAdded,
               onLikeToggled: _handleLikeToggled,
-              onDelete: (postId) async {
-                // Xử lý logic xóa bài viết
-                // Bạn có thể gọi một hàm xóa bài viết từ API ở đây
-              },
             );
           },
         ),
@@ -176,14 +193,12 @@ class PostCard extends StatelessWidget {
   final int currentUserId;
   final Function(Post, Comment) onCommentAdded;
   final Function(Post) onLikeToggled;
-  final Function(int) onDelete; // Hàm xóa bài viết
 
   const PostCard({
     required this.post,
     required this.currentUserId,
     required this.onCommentAdded,
     required this.onLikeToggled,
-    required this.onDelete,
   });
 
   bool _isLikedByCurrentUser() {
@@ -192,8 +207,7 @@ class PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String formattedDate = DateFormat('MMM d, yyyy • h:mm a')
-        .format(DateTime.parse(post.createdAt));
+    final String formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(DateTime.parse(post.createdAt));
 
     return Card(
       margin: EdgeInsets.only(bottom: 10),
@@ -214,37 +228,11 @@ class PostCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(post.userName, style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text(formattedDate, style: TextStyle(color: Colors.grey, fontSize: 12))
+                        Text(formattedDate, style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
-                    )
-
+                    ),
                   ],
                 ),
-                if (post.userId == currentUserId) // Kiểm tra nếu bài viết thuộc về người dùng hiện tại
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        // Logic cho việc chỉnh sửa bài viết
-                      } else if (value == 'delete') {
-                        onDelete(post.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Post deleted')),
-                        );
-                      }
-                    },
-                    itemBuilder: (BuildContext context) {
-                      return <PopupMenuEntry<String>>[
-                        const PopupMenuItem<String>(
-                          value: 'edit',
-                          child: Text('Edit'),
-                        ),
-                        const PopupMenuItem<String>(
-                          value: 'delete',
-                          child: Text('Delete'),
-                        ),
-                      ];
-                    },
-                  ),
               ],
             ),
             SizedBox(height: 4),
@@ -253,7 +241,7 @@ class PostCard extends StatelessWidget {
                 padding: EdgeInsets.symmetric(vertical: 8.0),
                 child: Text(post.content),
               ),
-            if (post.images.isNotEmpty) _buildImageGrid(post.images),
+            if (post.images.isNotEmpty) _buildImageGrid(post.images, context),
             Divider(height: 20),
             _buildPostActions(context),
           ],
@@ -262,31 +250,104 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImageGrid(List<PostImage> images) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,  // Chỉ 2 hình ảnh trong mỗi hàng
-        crossAxisSpacing: 5,
-        mainAxisSpacing: 5,
-      ),
-      itemCount: images.length > 4 ? 4 : images.length,  // Hạn chế số lượng hình ảnh hiển thị nếu có hơn 4 hình
-      itemBuilder: (context, index) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            images[index].content,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[200],
-                child: Icon(Icons.error),
-              );
-            },
+  Widget _buildImageGrid(List<PostImage> images, BuildContext context) {
+    // Giới hạn ảnh hiển thị tối đa là 6
+    List<PostImage> limitedImages = images.take(6).toList();
+    bool hasMoreImages = images.length > 6; // Kiểm tra có ảnh nhiều hơn 6 không
+
+    if (limitedImages.isEmpty) return SizedBox();
+
+    return Column(
+      children: [
+        GridView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3, // 3 cột
+            crossAxisSpacing: 5,
+            mainAxisSpacing: 5,
           ),
-        );
-      },
+          itemCount: hasMoreImages ? 6 : limitedImages.length, // Chỉ hiển thị tối đa 6
+          itemBuilder: (context, index) {
+            if (index == 5 && hasMoreImages) {
+              // Nếu là ô thứ 6 thì hiển thị biểu tượng "+" với background là ảnh thứ 6
+              return GestureDetector(
+                onTap: () {
+                  _openImageGallery(images, 5, context); // Mở ảnh thứ 6
+                },
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        limitedImages[5].content, // Lấy ảnh thứ 6 làm background
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: Center(child: Icon(Icons.image_not_supported)),
+                          );
+                        },
+                      ),
+                      Container(
+                        color: Colors.black54, // Màu nền tối để làm nổi bật chữ
+                      ),
+                      Center(
+                        child: Text(
+                          '+${images.length - 6}', // Hiển thị số lượng hình còn lại
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            // Hiển thị ảnh bình thường
+            return GestureDetector(
+              onTap: () {
+                _openImageGallery(images, index, context);
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  limitedImages[index].content,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[300],
+                      child: Center(child: Icon(Icons.image_not_supported)),
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _openImageGallery(List<PostImage> images, int initialIndex, BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PhotoViewGallery.builder(
+          itemCount: images.length,
+          builder: (context, index) {
+            return PhotoViewGalleryPageOptions(
+              imageProvider: NetworkImage(images[index].content),
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: PhotoViewComputedScale.covered * 2,
+              heroAttributes: PhotoViewHeroAttributes(tag: images[index].content),
+            );
+          },
+          scrollPhysics: BouncingScrollPhysics(),
+          backgroundDecoration: BoxDecoration(color: Colors.black),
+          pageController: PageController(initialPage: initialIndex),
+        ),
+      ),
     );
   }
 

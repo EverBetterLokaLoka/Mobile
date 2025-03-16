@@ -57,12 +57,16 @@ class ApiService {
       default:
         throw Exception('Unsupported HTTP method: $method');
     }
+
     print(token);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;
     } else {
       throw Exception('Failed to load data: ${response.body}');
     }
+
+    // Trả về phản hồi ngay cả khi gặp lỗi
+    return response;
   }
 
   Map<String, String> _defaultHeaders(String token) {

@@ -36,6 +36,12 @@ class _EditPostScreenState extends State<EditPostScreen> {
     _existingImages = List.from(widget.post.images);
   }
 
+  void _checkChanges() {
+    setState(() {
+      // Kiểm tra thay đổi
+    });
+  }
+
   void _pickImages() async {
     if (_isUploading) return;
 
@@ -49,8 +55,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
         String? token = await _authService.getToken();
         if (token == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Authentication token not found'))
-          );
+              SnackBar(content: Text('Authentication token not found')));
           return;
         }
 
@@ -61,6 +66,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
           if (imageUrl != null) {
             setState(() {
               _uploadedImageUrls.add(imageUrl);
+              _checkChanges(); // Kiểm tra thay đổi
             });
           }
         }
@@ -68,8 +74,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
     } catch (e) {
       print('Error picking or uploading images: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload images: $e'))
-      );
+          SnackBar(content: Text('Failed to upload images: $e')));
     } finally {
       setState(() {
         _isUploading = false;
@@ -91,7 +96,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
         final responseData = await response.stream.bytesToString();
         final jsonResponse = json.decode(responseData);
         print('Upload successful: ${jsonResponse['data']}');
-        return jsonResponse['data']; // Return the URL
+        return jsonResponse['data'];
       } else {
         final responseData = await response.stream.bytesToString();
         print('Upload failed with status: ${response.statusCode}');
@@ -107,12 +112,14 @@ class _EditPostScreenState extends State<EditPostScreen> {
   void _removeExistingImage(int index) {
     setState(() {
       _imagesToDelete.add(_existingImages[index].id);
+      _checkChanges(); // Cập nhật trạng thái thay đổi
     });
   }
 
   void _removeNewImage(int index) {
     setState(() {
       _uploadedImageUrls.removeAt(index);
+      _checkChanges(); // Cập nhật trạng thái thay đổi
     });
   }
 
@@ -127,8 +134,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
       String? token = await _authService.getToken();
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Authentication token not found'))
-        );
+            SnackBar(content: Text('Authentication token not found')));
         return;
       }
 
@@ -193,22 +199,19 @@ class _EditPostScreenState extends State<EditPostScreen> {
 
         widget.onUpdate(updatedPost);
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Post updated successfully!'))
-        );
+            SnackBar(content: Text('Post updated successfully!')));
 
         Navigator.of(context).pop();
       } else {
         print('Failed to update post: ${response.statusCode}');
         print('Response body: ${response.body}');
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update post: ${response.statusCode}'))
-        );
+            SnackBar(content: Text('Failed to update post: ${response.statusCode}')));
       }
     } catch (e) {
       print('Error updating post: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating post: $e'))
-      );
+          SnackBar(content: Text('Error updating post: $e')));
     } finally {
       setState(() {
         _isSaving = false;
@@ -218,8 +221,6 @@ class _EditPostScreenState extends State<EditPostScreen> {
 
   @override
   void dispose() {
-
-
     _contentController.dispose();
     super.dispose();
   }
@@ -227,23 +228,20 @@ class _EditPostScreenState extends State<EditPostScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 48, 16, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          
           children: [
             TextField(
               controller: _contentController,
               decoration: InputDecoration(labelText: 'Content'),
-              maxLines: 3,
+              onChanged: (text) {
+                _checkChanges();
+              },
             ),
             SizedBox(height: 20),
-            Text(
-              'Current Images',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
+            Text('Current Images', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             SizedBox(height: 10),
             if (_existingImages.isNotEmpty)
               SizedBox(
@@ -299,6 +297,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
                                   } else {
                                     _removeExistingImage(index);
                                   }
+                                  _checkChanges();
                                 });
                               },
                               child: Container(
@@ -323,72 +322,62 @@ class _EditPostScreenState extends State<EditPostScreen> {
               ),
             if (_existingImages.isEmpty || _existingImages.every((img) => _imagesToDelete.contains(img.id)))
               Center(
-                child: Text(
-                  'No existing images',
-                  style: TextStyle(color: Colors.grey),
-                ),
+                child: Text('No existing images', style: TextStyle(color: Colors.grey)),
               ),
             SizedBox(height: 20),
-            Text(
-              'New Images',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
+            Text('New Images', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             SizedBox(height: 10),
             if (_uploadedImageUrls.isNotEmpty)
               SizedBox(
                 height: 120,
-                child: Stack(
-                  children: [
-                    ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _uploadedImageUrls.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  _uploadedImageUrls[index],
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _uploadedImageUrls.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              _uploadedImageUrls[index],
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[300],
                                   width: 100,
                                   height: 100,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey[300],
-                                      width: 100,
-                                      height: 100,
-                                      child: Center(child: Icon(Icons.image_not_supported)),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Positioned(
-                                top: 5,
-                                right: 5,
-                                child: GestureDetector(
-                                  onTap: () => _removeNewImage(index),
-                                  child: Container(
-                                    padding: EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                                  child: Center(child: Icon(Icons.image_not_supported)),
+                                );
+                              },
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ],
+                          Positioned(
+                            top: 5,
+                            right: 5,
+                            child: GestureDetector(
+                              onTap: () => _removeNewImage(index),
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             SizedBox(height: 10),
@@ -407,35 +396,69 @@ class _EditPostScreenState extends State<EditPostScreen> {
               label: Text(_isUploading ? 'Uploading...' : 'Add New Images'),
             ),
             Spacer(),
+            SizedBox(height: 30), // Nâng vị trí của nút lên 30
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                TextButton(
-                  onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-                  child: Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: _isSaving || _isUploading ? null : _handleUpdate,
-                  child: _isSaving
-                      ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
+                SizedBox(
+                  width: 150, // Tăng độ rộng của nút
+                  child: TextButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      SizedBox(width: 8),
-                      Text('Updating...'),
-                    ],
-                  )
-                      : Text('Save'),
+                    ),
+                    onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+                    child: Text('Cancel'),
+                  ),
+                ),
+                SizedBox(
+                  width: 150, // Tăng độ rộng của nút
+                  child: ElevatedButton(
+                    onPressed: (_contentController.text.trim().isNotEmpty ||
+                        _uploadedImageUrls.isNotEmpty ||
+                        (_existingImages.isNotEmpty && _imagesToDelete.isEmpty)
+                    ) &&
+                        !_isSaving &&
+                        !_isUploading
+                        ? _handleUpdate
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: (_contentController.text.trim().isNotEmpty ||
+                          _uploadedImageUrls.isNotEmpty ||
+                          (_existingImages.isNotEmpty && _imagesToDelete.isEmpty)
+                      ) ? Colors.teal : Colors.grey,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 12,horizontal: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: _isSaving
+                        ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text('Updating...'),
+                      ],
+                    )
+                        : Text('Save'),
+                  ),
                 ),
               ],
             ),
+            SizedBox(height: 30),
           ],
         ),
       ),
