@@ -322,6 +322,7 @@ class _HomeTabState extends State<HomeTab> {
             setState(() {
               _posts.insert(0, newPost); // Thêm bài viết mới vào đầu danh sách
             });
+            HomeTab();
           }
         },
         child: Icon(Icons.add),
