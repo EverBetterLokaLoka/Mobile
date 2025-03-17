@@ -164,7 +164,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
         )
-            : _buildDefaultAvatar(),
+            : Image.asset('assets/images/avt-default'),
       ),
     );
   }

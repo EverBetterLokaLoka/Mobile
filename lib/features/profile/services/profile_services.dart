@@ -42,7 +42,7 @@ class ProfileService {
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized: Please log in again');
       } else {
-        throw Exception('Failed to load profile: ${response.statusCode}');
+        throw Exception('Failed to load profile: ${response.body}');
       }
     } catch (e) {
       print('Error while fetching profile: $e');

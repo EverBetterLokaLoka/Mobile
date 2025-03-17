@@ -65,7 +65,6 @@ class LocationService {
     for (String place in places) {
       final String query = "$place, $city, Viet Nam";
       final url = Uri.parse("https://geocode.search.hereapi.com/v1/geocode?q=${Uri.encodeComponent(query)}&apiKey=$apiKey");
-
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -76,6 +75,7 @@ class LocationService {
         }
       }
     }
+    print(coordinates);
 
     return coordinates;
   }

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lokaloka/core/utils/apis.dart';
 import 'package:http/http.dart' as http;
@@ -8,7 +10,9 @@ import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
 import 'package:lokaloka/features/moments/screens/select_itinerary_screen.dart';
 
+import '../../../core/utils/transfer_money.dart';
 import '../../itinerary/services/itinerary_api.dart';
+import '../../weather/services/LocationService.dart';
 
 class CreateMomentScreen extends StatefulWidget {
   final String userName;
@@ -28,7 +32,8 @@ class CreateMomentScreen extends StatefulWidget {
 
 class _CreateMomentScreenState extends State<CreateMomentScreen> {
   final TextEditingController _contentController = TextEditingController();
-  final DraggableScrollableController _dragController = DraggableScrollableController();
+  final DraggableScrollableController _dragController =
+      DraggableScrollableController();
   final ImagePicker _picker = ImagePicker();
 
   late String uploadUrl;
@@ -39,6 +44,11 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   bool isLoading = true;
   Map<String, dynamic>? selectedItinerary;
   bool _isPublishEnabled = false;
+  List<LatLng> latLngLocations = [];
+  String staticMapUrl = '';
+  List<String> locations = [];
+  static const String graphHopperApiKey =
+      "087f9f85-d3ed-4565-94da-bbe55971cf88";
 
   @override
   void initState() {
@@ -67,7 +77,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
   void _checkPublishButtonStatus() {
     setState(() {
-      _isPublishEnabled = _contentController.text.isNotEmpty || _uploadedImageUrls.isNotEmpty;
+      _isPublishEnabled =
+          _contentController.text.isNotEmpty || _uploadedImageUrls.isNotEmpty;
     });
   }
 
@@ -99,11 +110,13 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
             await _uploadImage(token, image);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Token is expired or not found.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Token is expired or not found.')));
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error picking images: $e')));
     } finally {
       _isPickingImage = false;
     }
@@ -126,13 +139,17 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           _checkPublishButtonStatus();
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image uploaded successfully!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Image uploaded successfully!')));
       } else {
         final responseData = await response.stream.bytesToString();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: ${response.statusCode} - $responseData')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text('Upload failed: ${response.statusCode} - $responseData')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -155,6 +172,28 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     });
   }
 
+  String imageUrl = '';
+
+  Future<List<Map<String, dynamic>>> getCoordinates(List<String> locations) async {
+    List<Map<String, dynamic>> coordinates = [];
+
+    for (String location in locations) {
+      String url = "https://nominatim.openstreetmap.org/search?q=$location&format=json";
+
+      try {
+        final response = await Dio().get(url);
+        if (response.statusCode == 200 && response.data.isNotEmpty) {
+          var lat = response.data[0]["lat"];
+          var lon = response.data[0]["lon"];
+          coordinates.add({"lat": lat, "lon": lon});
+        }
+      } catch (e) {
+        print("❌ Lỗi khi lấy tọa độ cho $location: $e");
+      }
+    }
+    return coordinates;
+  }
+
   Future<void> _openItinerarySelector() async {
     final itinerary = await Navigator.push(
       context,
@@ -162,12 +201,56 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     );
 
     if (itinerary != null) {
+      List<String> locationNames = [];
+
+      if (itinerary.containsKey("locations") &&
+          itinerary["locations"] is List) {
+        locationNames = (itinerary["locations"] as List)
+            .map((location) => location["name"].toString())
+            .toList();
+      }
+
+      final coordinates = await getCoordinates(locationNames);
+
+      String? address = itinerary['address'];
+      print("📌 Địa chỉ: $address");
+      print("📌 Danh sách địa điểm: $locationNames");
+
+      Future<String> getRouteImageUrl(List<Map<String, dynamic>> coordinates) async {
+        if (coordinates.length < 2) {
+          print("❌ Cần ít nhất 2 địa điểm để tạo tuyến đường.");
+          return "";
+        }
+
+        String points = coordinates.map((c) => "${c['lon']},${c['lat']}").join(";");
+        String osrmUrl = "http://router.project-osrm.org/route/v1/driving/$points?overview=full&geometries=geojson";
+
+        try {
+          final response = await Dio().get(osrmUrl);
+          if (response.statusCode == 200) {
+            var route = response.data["routes"][0]["geometry"]["coordinates"];
+            String path = route.map((p) => "${p[1]},${p[0]}").join("|");
+
+            // Tạo URL ảnh bản đồ với tuyến đường
+            String imageUrl =
+                "https://staticmap.openstreetmap.de/staticmap.php?center=${coordinates[0]['lat']},${coordinates[0]['lon']}&zoom=12&size=800x600&path=$path";
+
+            print("📍 URL ảnh: $imageUrl");
+            return imageUrl;
+          }
+        } catch (e) {
+          print("❌ Lỗi khi lấy tuyến đường: $e");
+        }
+        return "";
+      }
+
+      imageUrl = await getRouteImageUrl(coordinates);
+
       setState(() {
+        staticMapUrl = imageUrl;
         selectedItinerary = itinerary;
       });
     }
-    print(itinerary['id']);
-
   }
 
   @override
@@ -218,15 +301,21 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         controller: _contentController,
                         maxLines: null,
                         decoration: InputDecoration(
-                          hintText: 'Share your moment to connect with others...',
+                          hintText:
+                              'Share your moment to connect with others...',
                           border: InputBorder.none,
                         ),
                       ),
                       _buildImageWidgets(),
-                      if (selectedItinerary != null) ...[
-                        SizedBox(height: 16),
-                        _buildTripCard(selectedItinerary!),
-                      ],
+                      // Image.network(
+                      //   imageUrl,
+                      //   fit: BoxFit.cover,
+                      //   errorBuilder: (context, error, stackTrace) {
+                      //     print("🚨 Lỗi khi tải ảnh: $error");
+                      //     return Icon(Icons.error, size: 60, color: Colors.red);
+                      //   },
+                      // ),
+                      _buildTripCard(selectedItinerary!),
                     ],
                   ),
                 ),
@@ -244,7 +333,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
               onPressed: _toggleFooter,
               backgroundColor: Theme.of(context).primaryColor,
               child: Icon(
-                _isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+                _isExpanded
+                    ? Icons.keyboard_arrow_down
+                    : Icons.keyboard_arrow_up,
                 color: Colors.white,
               ),
             ),
@@ -324,7 +415,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.grey,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -334,12 +426,17 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: _isPublishEnabled ? _handlePublish : null,
+                                    onPressed: _isPublishEnabled
+                                        ? _handlePublish
+                                        : null,
                                     child: Text('Public'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: _isPublishEnabled ? Colors.teal : Colors.grey,
+                                      backgroundColor: _isPublishEnabled
+                                          ? Colors.teal
+                                          : Colors.grey,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -390,7 +487,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please add some content or images.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Please add some content or images.')));
       }
       return false; // Không publish thành công
     }
@@ -398,14 +496,17 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     String? token = await AuthService().getToken();
     if (token == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Token is expired or not found.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Token is expired or not found.')));
       }
       return false; // Không publish thành công
     }
 
-    List<Map<String, dynamic>> imageList = _uploadedImageUrls.map((url) => {
-      'content': url,
-    }).toList();
+    List<Map<String, dynamic>> imageList = _uploadedImageUrls
+        .map((url) => {
+              'content': url,
+            })
+        .toList();
 
     try {
       final response = await http.post(
@@ -417,25 +518,29 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         body: jsonEncode({
           'content': content,
           'itinerary': itinerary,
-          'images': imageList,  // Đảm bảo rằng 'images' là danh sách đối tượng
+          'images': imageList, // Đảm bảo rằng 'images' là danh sách đối tượng
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post published successfully!')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Post published successfully!')));
         }
         return true; // Publish thành công
       } else {
         final responseData = response.body;
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to publish post: ${response.statusCode} - $responseData')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(
+                  'Failed to publish post: ${response.statusCode} - $responseData')));
         }
         return false; // Không publish thành công
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
       return false; // Không publish thành công
     }
@@ -475,9 +580,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     );
   }
 
-  Widget _buildTripCard(Map<String, dynamic> trip) {
+  Widget _buildTripCard(Map<String, dynamic> trip, {String? imageItinerary}) {
     return Padding(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(15),
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         elevation: 3,
@@ -488,16 +593,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: trip['locations'] != null && trip['locations'].isNotEmpty
-                    ? Image.network(
-                  trip['locations'].firstWhere(
-                        (location) => location['image'] != null && location['image'].isNotEmpty,
-                    orElse: () => {'image': ''},
-                  )['image'],
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                )
+                child: imageItinerary != null && imageItinerary.isNotEmpty
+                    ? Image.network(imageItinerary,
+                    width: 80, height: 80, fit: BoxFit.cover)
                     : Container(
                   width: 80,
                   height: 80,
@@ -522,7 +620,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         Icon(Icons.calendar_today,
                             size: 16, color: Colors.grey),
                         SizedBox(width: 6),
-                        Text('2 days 1 night',
+                        Text('${trip['init_date']} days',
                             style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
@@ -531,7 +629,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                       children: [
                         Icon(Icons.attach_money, size: 16, color: Colors.grey),
                         SizedBox(width: 6),
-                        Text(trip['price']?.toString() ?? 'N/A',
+                        Text(CurrencyFormatter.formatVnd(trip['price']),
                             style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:lokaloka/features/auth/screens/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/url_constant.dart';
 import '../../../core/utils/apis.dart';
@@ -78,10 +79,10 @@ class AuthService {
         showCustomNotice(
             context, 'Your account has been created successfully.', 'confirm');
 
-        // Navigator.pushReplacement(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => TermOfService()),
-        // );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => Login()),
+        );
         return "Success";
       } else {
         final responseData = jsonDecode(response.body);
@@ -177,7 +178,7 @@ class AuthService {
     int currentTime = DateTime.now().millisecondsSinceEpoch;
     int elapsedTime = (currentTime - savedTime) ~/ 1000;
 
-    if (elapsedTime > 1500) {
+    if (elapsedTime > 86400) {
       print("Token expired! Removing...");
       await prefs.remove("auth_token");
       await prefs.remove("token_saved_time");
@@ -201,10 +202,11 @@ class AuthService {
     int currentTime = DateTime.now().millisecondsSinceEpoch;
     int elapsedTime = (currentTime - savedTime) ~/ 1000;
 
-    if (elapsedTime > 1500) {
+    if (elapsedTime > 86400) {
       print("Token expired! User needs to log in again.");
       await prefs.remove("auth_token");
       await prefs.remove("token_saved_time");
+
       return false;
     }
 
@@ -220,6 +222,7 @@ class AuthService {
 
     bool valid = await isTokenValid();
     if (!valid) {
+      showCustomNotice(context, "Your session has expired. Please log in again.", "error");
       Navigator.pushReplacementNamed(context, '/login');
     } else {
       print("Token is still valid!");

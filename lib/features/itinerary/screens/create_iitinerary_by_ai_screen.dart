@@ -49,60 +49,65 @@ class _CreateByAiState extends State<CreateByAi> {
 
   final ApiService _apiService = ApiService();
 
-  Future<void> _sendDataToBackend() async {
+  Future<void> _sendDataToBackend({int retryCount = 0}) async {
+    const int maxRetries = 3;
+
     try {
       final String dateInfo =
-          (widget.startDate.isNotEmpty && widget.endDate.isNotEmpty)
-              ? "from ${widget.startDate} to ${widget.endDate} "
-              : "";
+      (widget.startDate.isNotEmpty && widget.endDate.isNotEmpty)
+          ? "from ${widget.startDate} to ${widget.endDate} "
+          : "";
 
       final String budgetText = _budgetController.text.trim();
       final String formattedBudget = budgetText.isNotEmpty
-          ? CurrencyFormatter.format(budgetText)
+          ? CurrencyFormatter.formatVnd(budgetText)
           : "Not specified";
 
-      int night = int.parse(widget.totalDay);
-      night = night - 1;
+      int night = int.parse(widget.totalDay) - 1;
 
       final String prompt =
-          "I want to have travel schedule ${dateInfo}in ${widget.location} for ${widget.totalDay} Days and $night. "
+          "I want to have travel schedule ${dateInfo}in ${widget.location} for ${widget.totalDay} Days and $night nights. "
           "With my budget is $formattedBudget. "
           "I am interested in activities such as: ${_interests.entries.where((entry) => entry.value).map((entry) => entry.key).join(', ')}."
-          "At least 4 location in one day. "
-          "Important: Please generate for me 2 type plan for me to select.";
+          "At least 4 locations in one day. "
+          "Important: Please generate for me 2 types of plans to select.";
 
       final Map<String, dynamic> requestData = {
         'prompt': prompt,
       };
-      try {
-        final response = await _apiService.request(
-          path: '/itineraries/generate',
-          method: 'POST',
-          typeUrl: 'baseUrl',
-          currentPath: '',
-          data: requestData,
-        );
 
-        if (response.body == null || response.body.isEmpty) {
-          throw Exception("API response is empty");
-        }
+      final response = await _apiService.request(
+        path: '/itineraries/generate',
+        method: 'POST',
+        typeUrl: 'baseUrl',
+        currentPath: '',
+        data: requestData,
+      );
 
-        final itineraryResponse = parseItineraryResponse(response.body);
-        //Fetch images for location
-        String imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ItineraryCreated(data: itineraryResponse, image: imageItinerary),
-            settings: RouteSettings(name: '/my-trip/itinerary-created'),
-          ),
-        );
-      } catch (e) {
-        print("Lỗi khi xử lý JSON: $e");
+      if (response.body == null || response.body.isEmpty) {
+        throw Exception("API response is empty");
       }
-    } catch (error) {
-      _showResponseDialog('Error', 'Failed to plan trip: $error');
+
+      final itineraryResponse = parseItineraryResponse(response.body);
+      String imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ItineraryCreated(data: itineraryResponse, image: imageItinerary),
+          settings: RouteSettings(name: '/my-trip/itinerary-created'),
+        ),
+      );
+    } catch (e) {
+      print("Lỗi khi xử lý JSON: $e");
+
+      if (e.toString().contains('500') && retryCount < maxRetries) {
+        print("Thử lại lần ${retryCount + 1}...");
+        await Future.delayed(Duration(seconds: 1));
+        return _sendDataToBackend(retryCount: retryCount + 1);
+      }
+
+      _showResponseDialog('Error', 'Failed to plan trip: $e');
     }
   }
 

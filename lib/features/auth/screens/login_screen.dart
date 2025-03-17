@@ -50,7 +50,7 @@ class _LoginState extends State<Login> {
     if (data != null) {
       Navigator.pushNamedAndRemoveUntil(context, '/home', (Route<dynamic> route) => false);
     } else {
-      message = "Invalid email or password. Please try again.";
+      message = "Invalid email or password.\n Please try again.";
     }
   }
 

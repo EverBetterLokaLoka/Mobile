@@ -4,9 +4,9 @@ import '../../features/auth/services/auth_services.dart';
 import '../constants/url_constant.dart';
 
 class ApiService {
-  final String baseUrl = 'https://d5e8-116-105-27-150.ngrok-free.app/api';
+  final String baseUrl = 'https://6514-116-105-27-150.ngrok-free.app/api';
 
-  final String imgKey = "b49d82fbb2dbf713c012d1441415c8cb4e969a4c";
+  final String imgKey = "725fa29bb10ba691adbaa03f93017c3fbb716315";
 
   final String locationUrl = 'https://provinces.open-api.vn/api/p';
 

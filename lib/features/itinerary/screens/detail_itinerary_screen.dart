@@ -26,6 +26,20 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
   bool _isExpanded = false;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _preloadImages();
+  }
+
+  void _preloadImages() {
+    for (var location in widget.itineraryItems.locations) {
+      if (location.image != null && location.image!.isNotEmpty) {
+        precacheImage(NetworkImage(location.image!), context);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (widget.itineraryItems.locations.isEmpty) {
       return Scaffold(
@@ -99,15 +113,6 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                         errorText: errorMessage,
                       ),
                     ),
-                    if (errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 5),
-                        child: Text(
-                          errorMessage!,
-                          style:
-                          const TextStyle(color: Colors.red, fontSize: 12),
-                        ),
-                      ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -172,7 +177,7 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
             }
         }
         String? result = await ItineraryApi()
-            .saveItinerary(widget.itineraryItems);
+            .saveItinerary(context, widget.itineraryItems);
         if (result == "ok") {
           handleDialog(context);
         }
@@ -415,7 +420,7 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                     const Text("Cost: ",
                         style: TextStyle(color: AppColors.primaryColor)),
                     Text(
-                      CurrencyFormatter.format(location.price.toString()),
+                      CurrencyFormatter.formatVnd(location.price.toString()),
                       style: const TextStyle(color: Colors.black),
                     ),
                   ],
@@ -466,7 +471,7 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                                   style: const TextStyle(color: Colors.black87),
                                 ),
                               Text(
-                                "   💰 Price: ${CurrencyFormatter.format(activity.price.toString())}",
+                                "   💰 Price: ${CurrencyFormatter.formatVnd(activity.price.toString())}",
                                 style: const TextStyle(color: Colors.black87),
                               ),
                               if (activity.rule != null &&

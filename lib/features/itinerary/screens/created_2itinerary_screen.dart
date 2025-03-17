@@ -51,6 +51,8 @@ class ItineraryCreated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print(data.itinerary.length);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Itinerary Created'),
@@ -96,7 +98,7 @@ class ItineraryCreated extends StatelessWidget {
     return InkWell(
       onTap: () {
         fetchImagesForLocations(data);
-        final itinerary = data.itinerary.firstWhere((it) => it.id == item.id);
+        final itinerary = data.itinerary.firstWhere((it) => it.title == item.title);
         Navigator.push(
           context,
           CupertinoPageRoute(
