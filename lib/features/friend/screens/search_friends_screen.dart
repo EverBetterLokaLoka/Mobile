@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/friend/models/friend.dart';
 import 'package:lokaloka/features/friend/services/friend_service.dart';
 import 'package:lokaloka/features/friend/widgets/friend_list_item.dart';
@@ -41,14 +42,11 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
     });
 
     try {
-      // Get search results
       final results = await _friendService.searchFriends(query);
 
-      // Clear previous statuses and follower IDs
       _friendStatuses.clear();
       _followerIds.clear();
 
-      // Get all friends, pending requests, and friend requests in parallel
       final friendsFuture = _friendService.getFriends();
       final pendingRequestsFuture = _friendService.getPendingRequests();
       final friendRequestsFuture = _friendService.getFriendSuggestions();
@@ -57,27 +55,17 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
       final pendingRequests = await pendingRequestsFuture;
       final friendRequests = await friendRequestsFuture;
 
-      // Log the pending requests for debugging
       developer.log('Pending requests: ${pendingRequests.map((f) => '${f.username} (id: ${f.id}, userId: ${f.userId}, email: ${f.email})').join(', ')}');
 
-      // Create maps for faster lookup
-      final friendEmails = Map.fromEntries(
-          friends.map((f) => MapEntry(f.email.toLowerCase(), f.id))
-      );
+      final friendEmails = Map.fromEntries(friends.map((f) => MapEntry(f.email.toLowerCase(), f.id)));
 
-      final pendingRequestEmails = Map.fromEntries(
-          pendingRequests.map((f) => MapEntry(f.email.toLowerCase(), f.id))
-      );
+      final pendingRequestEmails = Map.fromEntries(pendingRequests.map((f) => MapEntry(f.email.toLowerCase(), f.id)));
 
-      final friendRequestEmails = Map.fromEntries(
-          friendRequests.map((f) => MapEntry(f.email.toLowerCase(), f.id))
-      );
+      final friendRequestEmails = Map.fromEntries(friendRequests.map((f) => MapEntry(f.email.toLowerCase(), f.id)));
 
-      // Create temporary maps to store statuses and follower IDs
       Map<String, String> tempStatuses = {};
       Map<String, int> tempFollowerIds = {};
 
-      // Determine status for each search result
       for (var friend in results) {
         final lowerEmail = friend.email.toLowerCase();
 
@@ -99,7 +87,6 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
         }
       }
 
-      // Only update state once all statuses are determined
       if (mounted) {
         setState(() {
           _searchResults = results;
@@ -140,13 +127,63 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
     );
   }
 
+  Future<void> _sendFriendRequest(Friend friend) async {
+    try {
+      String? currentUserId = await AuthService().getUserIdFromToken();
+      String? currentUserLogin = await AuthService().getUserNameFromToken(context);
+
+      if (currentUserId == null || currentUserLogin == null) {
+        _showErrorSnackBar('Unable to retrieve user ID or username');
+        return;
+      }
+
+      final success = await _friendService.addRequestFriend(friend.userId);
+      if (success) {
+        final lowerEmail = friend.email.toLowerCase();
+        setState(() {
+          _friendStatuses[lowerEmail] = "PENDING";
+        });
+
+        final notificationMessage = 'Bạn nhận được yêu cầu kết bạn từ $currentUserLogin';
+        final notificationId = await _friendService.sendNotification(notificationMessage, friend.userId, currentUserId);
+
+        if (notificationId != null) {
+          _showSuccessSnackBar('Friend request sent to ${friend.username} and notification sent.');
+        } else {
+          _showErrorSnackBar('Friend request sent to ${friend.username}, but failed to send notification.');
+        }
+      } else {
+        _showErrorSnackBar('Failed to send friend request');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: $e');
+    }
+  }
+
+  Future<void> _acceptFriendRequest(Friend friend, int followerId) async {
+    try {
+      final success = await _friendService.addFriendWithFollowerId(followerId);
+      if (success) {
+        final lowerEmail = friend.email.toLowerCase();
+        setState(() {
+          _friendStatuses[lowerEmail] = "FRIEND";
+        });
+        _showSuccessSnackBar('Added ${friend.username} as friend');
+      } else {
+        _showErrorSnackBar('Failed to accept friend request');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, true), // Return true to trigger refresh
+          onPressed: () => Navigator.pop(context, true),
         ),
         title: Container(
           height: 40,
@@ -188,7 +225,7 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
                   ),
                   TextButton(
                     onPressed: () {
-                      // View all friends action
+                      // Action to view all friends
                     },
                     child: const Text(
                       'View all',
@@ -294,7 +331,6 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
             child: ElevatedButton(
               onPressed: () async {
                 if (friend.id != null) {
-                  developer.log("friend id" + friend.id.toString());
                   final success = await _friendService.cancelFriendRequestSend(friend.id);
                   if (success) {
                     final lowerEmail = friend.email.toLowerCase();
@@ -302,7 +338,19 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
                       _friendStatuses[lowerEmail] = "NONE"; // Update UI status
                       _followerIds.remove(lowerEmail); // Remove ID as it does not exist anymore
                     });
-                    _showSuccessSnackBar('Canceled friend request to ${friend.username}');
+
+                    // Lấy ID người dùng hiện tại
+                    String? currentUserId = await AuthService().getUserIdFromToken();
+                    if (currentUserId != null) {
+                      bool notificationCancelled = await _friendService.cancelNotification(int.parse(currentUserId), friend.id);
+                      if (notificationCancelled) {
+                        _showSuccessSnackBar('Canceled friend request to ${friend.username} and notification cancelled.');
+                      } else {
+                        _showErrorSnackBar('Failed to cancel notification after cancelling friend request.');
+                      }
+                    } else {
+                      _showErrorSnackBar('Failed to retrieve current user ID.');
+                    }
                   } else {
                     _showErrorSnackBar('Failed to cancel friend request to ${friend.username}');
                   }
@@ -372,41 +420,6 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
     }
   }
 
-  Future<void> _sendFriendRequest(Friend friend) async {
-    try {
-      final success = await _friendService.addRequestFriend(friend.userId);
-      if (success) {
-        final lowerEmail = friend.email.toLowerCase();
-        setState(() {
-          _friendStatuses[lowerEmail] = "PENDING";
-        });
-        _showSuccessSnackBar('Friend request sent to ${friend.username}');
-      } else {
-        _showErrorSnackBar('Failed to send friend request');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Error: $e');
-    }
-  }
-
-  Future<void> _acceptFriendRequest(Friend friend, int followerId) async {
-    try {
-      // Use the follower ID for approval, not the user ID
-      final success = await _friendService.addFriendWithFollowerId(followerId);
-      if (success) {
-        final lowerEmail = friend.email.toLowerCase();
-        setState(() {
-          _friendStatuses[lowerEmail] = "FRIEND";
-        });
-        _showSuccessSnackBar('Added ${friend.username} as friend');
-      } else {
-        _showErrorSnackBar('Failed to accept friend request');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Error: $e');
-    }
-  }
-
   void _showFriendOptions(Friend friend, int? followerId) {
     showModalBottomSheet(
       context: context,
@@ -421,7 +434,7 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
                 title: const Text('Send Message'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Send message logic
+                  // Logic for sending message
                 },
               ),
               ListTile(
@@ -430,7 +443,6 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
                 onTap: () async {
                   Navigator.pop(context);
                   try {
-                    // Use follower ID if available, otherwise use user ID
                     final idToUse = followerId != null ? followerId.toString() : friend.userId.toString();
                     final success = await _friendService.removeFriend(idToUse);
                     if (success) {
@@ -453,7 +465,7 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
                 title: const Text('Block User'),
                 onTap: () {
                   Navigator.pop(context);
-                  // Block user logic
+                  // Logic to block user
                 },
               ),
             ],
