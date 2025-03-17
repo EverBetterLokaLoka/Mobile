@@ -83,11 +83,13 @@ class _CreateByAiState extends State<CreateByAi> {
           data: requestData,
         );
 
-        final itineraryResponse = parseItineraryResponse(response.body);
+        if (response.body == null || response.body.isEmpty) {
+          throw Exception("API response is empty");
+        }
 
+        final itineraryResponse = parseItineraryResponse(response.body);
         //Fetch images for location
-        // String name = itineraryResponse.itinerary;
-        String? imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
+        String imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
 
         Navigator.push(
           context,

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:lokaloka/globals.dart';
 
 import '../../../core/utils/apis.dart';
@@ -35,39 +35,42 @@ class ItineraryApi {
     return [];
   }
 
-  Future<bool?> saveItinerary(Itinerary itinerary) async {
+  Future<String?> saveItinerary(Itinerary itinerary) async {
     try {
       final Map<String, dynamic> body = {
         "title": itinerary.title,
         "description": itinerary.description,
         "price": itinerary.price,
-        "address": cityTrip,
-        "init_date": travelDays,
+        "address": cityTrip ?? "",
+        "init_date": travelDays ?? "",
         "locations": itinerary.locations.map((location) {
           return {
             "name": location.name,
             "day": location.day,
             "description": location.description,
+            "image": location.image ?? "",
             "flag": location.flag ?? false,
-            "time_start": location.timeStart.toUtc().toIso8601String(),
-            "time_finish": location.timeFinish.toUtc().toIso8601String(),
-            "time_reminder": location.timeReminder,
-            "culture": location.culture,
-            "recommended_time": location.recommendedTime,
-            "price": location.price ?? "0.0",
+            "time_start": location.timeStart?.toUtc().toIso8601String() ?? "",
+            "time_finish": location.timeFinish?.toUtc().toIso8601String() ?? "",
+            "time_reminder": location.timeReminder ?? "0",
+            "culture": location.culture ?? "",
+            "recommended_time": location.recommendedTime ?? "",
+            "price": location.price?.toString() ?? "0.0",
             "activities": location.activities.map((activity) {
               return {
                 "name": activity.name,
                 "description": activity.description,
-                "activities_possible": activity.activitiesPossible,
-                "price": activity.price,
-                "rule": activity.rule,
-                "recommend": activity.recommend,
+                "activities_possible": activity.activitiesPossible ?? "",
+                "price": activity.price?.toString() ?? "0.0",
+                "rule": activity.rule ?? "",
+                "recommend": activity.recommend ?? "",
               };
             }).toList(),
           };
         }).toList(),
       };
+
+      debugPrint("Request body: $body", wrapWidth: 1024);
 
       final response = await _apiService.request(
         path: '/itineraries',
@@ -77,17 +80,25 @@ class ItineraryApi {
         data: body,
       );
 
+      print("Response received");
+
       if (response.statusCode == 201) {
         print("Itinerary saved successfully!");
-        return true;
-      } else {
-        print("Failed to save itinerary: ${response.body}");
-        return false;
+        return "ok";
       }
-    } catch (e) {
+      if (response.statusCode == 403) {
+        print("Itinerary saved successfully!");
+        return "douLiName";
+      } else {
+        print(
+            "Failed to save itinerary: ${response.body ?? 'No response body'}");
+        return "fail";
+      }
+    } catch (e, stackTrace) {
       print("Error saving itinerary: $e");
+      print(stackTrace);
     }
-    return false;
+    return "false";
   }
 
   Future<Itinerary> getItineraryById(int? itineraryId) async {
@@ -154,11 +165,132 @@ class ItineraryApi {
         "init_date": travelDays,
         "status": 1,
         "start_date": DateTime.now().toUtc().toIso8601String(),
+        "updated_at": DateTime.now().toUtc().toIso8601String(),
         "locations": itinerary.locations.map((location) {
           return {
             "name": location.name,
             "day": location.day,
             "description": location.description,
+            "image": location.image,
+            "flag": location.flag ?? false,
+            "time_start": location.timeStart.toUtc().toIso8601String(),
+            "time_finish": location.timeFinish.toUtc().toIso8601String(),
+            "time_reminder": location.timeReminder,
+            "culture": location.culture,
+            "recommended_time": location.recommendedTime,
+            "price": location.price ?? "0.0",
+            "activities": location.activities.map((activity) {
+              return {
+                "name": activity.name,
+                "description": activity.description,
+                "activities_possible": activity.activitiesPossible,
+                "price": activity.price,
+                "rule": activity.rule,
+                "recommend": activity.recommend,
+              };
+            }).toList(),
+          };
+        }).toList(),
+      };
+
+      final response = await _apiService.request(
+        path: '/itineraries/$itineraryId',
+        method: 'PUT',
+        typeUrl: 'baseUrl',
+        currentPath: '',
+        data: body,
+      );
+
+      if (response.statusCode == 200) {
+        print("Itinerary updated successfully!");
+        return true;
+      } else {
+        print("Failed to update itinerary: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error updating itinerary: $e");
+      return false;
+    }
+  }
+
+  Future<bool?> updateItinerary(int? itineraryId, Itinerary itinerary) async {
+    print('Updating itinerary with ID: $itineraryId');
+    try {
+      final Map<String, dynamic> body = {
+        "title": itinerary.title,
+        "description": itinerary.description,
+        "price": itinerary.price,
+        "address": cityTrip,
+        "init_date": travelDays,
+        "start_date": itinerary.start_date?.toUtc().toIso8601String(),
+        "updated_at": DateTime.now().toUtc().toIso8601String(),
+        "locations": itinerary.locations.map((location) {
+          return {
+            "name": location.name,
+            "day": location.day,
+            "description": location.description,
+            "image": location.image,
+            "flag": location.flag ?? false,
+            "time_start": location.timeStart.toUtc().toIso8601String(),
+            "time_finish": location.timeFinish.toUtc().toIso8601String(),
+            "time_reminder": location.timeReminder,
+            "culture": location.culture,
+            "recommended_time": location.recommendedTime,
+            "price": location.price ?? "0.0",
+            "activities": location.activities.map((activity) {
+              return {
+                "name": activity.name,
+                "description": activity.description,
+                "activities_possible": activity.activitiesPossible,
+                "price": activity.price,
+                "rule": activity.rule,
+                "recommend": activity.recommend,
+              };
+            }).toList(),
+          };
+        }).toList(),
+      };
+
+      final response = await _apiService.request(
+        path: '/itineraries/$itineraryId',
+        method: 'PUT',
+        typeUrl: 'baseUrl',
+        currentPath: '',
+        data: body,
+      );
+
+      if (response.statusCode == 200) {
+        print("✅ Itinerary updated successfully!");
+        return true;
+      } else {
+        print("❌ Failed to update itinerary: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("⚠️ Error updating itinerary: $e");
+      return false;
+    }
+  }
+
+  Future<bool?> finishItineraryUpdate(
+      int? itineraryId, Itinerary itinerary) async {
+    print('vao function goItineraryUpdate');
+    try {
+      final Map<String, dynamic> body = {
+        "title": itinerary.title,
+        "description": itinerary.description,
+        "price": itinerary.price,
+        "address": cityTrip,
+        "init_date": travelDays,
+        "status": 2,
+        "start_date": DateTime.now().toUtc().toIso8601String(),
+        "locations": itinerary.locations.map((location) {
+          return {
+            "name": location.name,
+            "day": location.day,
+            "description": location.description,
+            "image": location.image,
             "flag": location.flag ?? false,
             "time_start": location.timeStart.toUtc().toIso8601String(),
             "time_finish": location.timeFinish.toUtc().toIso8601String(),

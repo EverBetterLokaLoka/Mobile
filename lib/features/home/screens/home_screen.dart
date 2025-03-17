@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lokaloka/core/styles/colors.dart';
+import 'package:lokaloka/features/auth/models/user.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../globals.dart';
 import '../../../widgets/app_bar_widget.dart';
-import '../../../widgets/menu_widget.dart';
 import '../../auth/services/auth_services.dart';
 import '../../navigation/services/navigation_api.dart';
-import '../../notification/screens/notification_screen.dart';
 import '../../profile/services/profile_services.dart';
 import '../../weather/services/LocationService.dart';
 
@@ -22,9 +21,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
   LatLng? currentLocation;
   final ProfileService _profileService = ProfileService();
+  UserNormal? user;
 
   @override
   void initState() {
@@ -32,16 +31,17 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AuthService().checkTokenAndProceed(context);
     });
+    _fetchUserProfile();
     _initializeLocation();
     getCity();
-    _fetchUserProfile();
   }
 
   Future<void> _fetchUserProfile() async {
-    final response = await _profileService.getUserProfile();
+    user = await _profileService.getUserProfile();
 
-    if (response != null) {
-      trustPhone = response.emergency_numbers;
+    if (user != null) {
+      trustPhone = user?.emergency_numbers;
+      userGlobal = user;
     }
   }
 
@@ -136,10 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body:
-      SafeArea(
-        child:
-        Container(
+      body: SafeArea(
+        child: Container(
           width: double.infinity,
           height: MediaQuery.of(context).size.height * 1.2,
           decoration: const BoxDecoration(
@@ -171,19 +169,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       bottomNavigationBar: AppBarCustom(),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.orange,
-        shape: CircleBorder(),
-        onPressed: () {
-          Navigator.pushNamed(context, "/create-itinerary");
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add, size: 28, color: Colors.white),
-            Text("Itinerary",
-                style: TextStyle(fontSize: 12, color: Colors.white)),
-          ],
+      floatingActionButton: Container(
+        width: 65,
+        height: 65,
+        child: FloatingActionButton(
+          backgroundColor: Colors.orange,
+          shape: CircleBorder(),
+          onPressed: () {
+            Navigator.pushNamed(context, "/create-itinerary");
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: 32, color: Colors.white),
+              Text("Itinerary",
+                  style: TextStyle(fontSize: 12, color: Colors.white)),
+            ],
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -202,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Hi, Phát",
+                    Text("Hi, ${user?.displayName ?? "User"}",
                         style: GoogleFonts.poppins(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -211,9 +213,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Icon(Icons.location_on, color: Colors.black, size: 16),
                         SizedBox(width: 5),
-                        Text("Đà Nẵng, Việt Nam",
-                            style: GoogleFonts.poppins(
-                                fontSize: 14, color: Colors.black)),
+                        Text(
+                          "${user?.address?.isNotEmpty == true ? user!.address : cityName}, Việt Nam",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.black,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -224,7 +230,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pushNamed(context, '/profile');
                   },
                   child: CircleAvatar(
-                    backgroundImage: AssetImage('assets/images/avt.png'),
+                    backgroundImage: user?.avatar != null
+                        ? NetworkImage(user!.avatar!)
+                        : AssetImage(user?.gender == 'male'
+                                ? 'assets/images/default-avt-female.png'
+                                : 'assets/images/default-avt-male.png')
+                            as ImageProvider,
                     radius: 22,
                   ),
                 )

@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/styles/colors.dart';
 import '../../itinerary/widgets/itinerary-app_bar.dart';
+import '../../moments/screens/moment_screen.dart';
 import '../services/navigation_api.dart';
 
 class MapNavigationScreen extends StatefulWidget {
@@ -21,7 +22,10 @@ class MapNavigationScreen extends StatefulWidget {
   List<String> locationNames = [];
 
   MapNavigationScreen(
-      {super.key, required this.title, required this.locations, required this.locationNames});
+      {super.key,
+      required this.title,
+      required this.locations,
+      required this.locationNames});
 
   @override
   _MapScreenState createState() => _MapScreenState();
@@ -269,6 +273,77 @@ class _MapScreenState extends State<MapNavigationScreen> {
     setState(() {});
   }
 
+  void _showCompletionPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          contentPadding: EdgeInsets.all(20),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Congratulations on completing your journey!",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+              SizedBox(height: 10),
+              Text(
+                "After completing your trip, would you like to share your amazing experience?",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[500],
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text("Cancel"),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                    ),
+                    onPressed: () {
+                      _shareExperience();
+                      Navigator.of(context).pop();
+                    },
+                    child: Text("Share"),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _shareExperience() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+        MomentsScreen(),
+      ),
+    );
+    print("User clicked Share!");
+  }
+
   @override
   void dispose() {
     positionStream?.cancel();
@@ -309,7 +384,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
                             infoWindow: InfoWindow(
                               title: locationNames[index],
                               snippet:
-                              "Vĩ độ: ${position.latitude}, Kinh độ: ${position.longitude}",
+                                  "Vĩ độ: ${position.latitude}, Kinh độ: ${position.longitude}",
                             ),
                             onTap: () {
                               setState(() {
@@ -363,33 +438,29 @@ class _MapScreenState extends State<MapNavigationScreen> {
             ],
           ),
           DraggableScrollableSheet(
-            initialChildSize: 0.3, // 30%
-            minChildSize: 0.3, //  10%
-            maxChildSize: 0.9, //  90%
+            initialChildSize: 0.3,
+            minChildSize: 0.3,
+            maxChildSize: 0.9,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black26, blurRadius: 10),
-                  ],
+                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Column(
                     children: [
-                      Container(
-                        width: 120,
-                        height: 3,
-                        color: Colors.black,
-                      ),
+                      Container(width: 120, height: 3, color: Colors.black),
                       Expanded(
                         child: ListView.builder(
                           controller: scrollController,
                           itemCount: _instructions.length,
                           itemBuilder: (context, index) {
-                            String instruction = _instructions[index].toLowerCase();
+                            String instruction =
+                                _instructions[index].toLowerCase();
+
                             IconData getIcon(String instruction) {
                               if (instruction.contains("turn right")) {
                                 return Icons.turn_right;
@@ -403,13 +474,22 @@ class _MapScreenState extends State<MapNavigationScreen> {
                                 return Icons.turn_slight_right;
                               } else if (instruction.contains("continue")) {
                                 return Icons.straight;
-                              } else if (instruction.contains("at roundabout")) {
+                              } else if (instruction
+                                  .contains("at roundabout")) {
                                 return Icons.roundabout_right;
-                              } else if (instruction.contains("arrive at destination")) {
+                              } else if (instruction
+                                  .contains("arrive at destination")) {
                                 return Icons.flag;
                               } else {
                                 return Icons.directions;
                               }
+                            }
+
+                            if (index == currentStep &&
+                                instruction.contains("arrive at destination")) {
+                              Future.delayed(Duration(milliseconds: 300), () {
+                                _showCompletionPopup(context);
+                              });
                             }
                             return ListTile(
                               leading: Icon(getIcon(instruction)),
@@ -418,7 +498,9 @@ class _MapScreenState extends State<MapNavigationScreen> {
                                     ? "**${_instructions[index]}** (Going...)"
                                     : _instructions[index],
                                 style: TextStyle(
-                                  fontWeight: index == currentStep ? FontWeight.bold : FontWeight.normal,
+                                  fontWeight: index == currentStep
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             );
@@ -432,18 +514,19 @@ class _MapScreenState extends State<MapNavigationScreen> {
                             onPressed: isNavigating ? null : _startNavigation,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
                               minimumSize: const Size(100, 36),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  "Start",
-                                  style: TextStyle(color: Colors.white, fontSize: 12),
-                                ),
+                                const Text("Start",
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 12)),
                                 const SizedBox(width: 4),
-                                const Icon(Icons.play_arrow, color: Colors.white, size: 16),
+                                const Icon(Icons.play_arrow,
+                                    color: Colors.white, size: 16),
                               ],
                             ),
                           ),
@@ -451,34 +534,20 @@ class _MapScreenState extends State<MapNavigationScreen> {
                             onPressed: _stopNavigation,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
                               minimumSize: const Size(100, 36),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  "Stop",
-                                  style: TextStyle(color: Colors.white, fontSize: 12),
-                                ),
+                                const Text("Stop",
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 12)),
                                 const SizedBox(width: 4),
-                                const Icon(Icons.stop, color: Colors.white, size: 16),
+                                const Icon(Icons.stop,
+                                    color: Colors.white, size: 16),
                               ],
-                            ),
-                          ),
-                          IconButton(
-                            key: const ValueKey('capture_button'),
-                            onPressed: () {
-                              if (_selectedIndex != null) {
-                                _askCapture(_selectedIndex!);
-                              }
-                            },
-                            icon: const Icon(Icons.camera_alt_rounded,
-                                color: Colors.white, size: 18),
-                            style: ButtonStyle(
-                              backgroundColor:
-                              WidgetStateProperty.all(AppColors.orangeColor),
-                              minimumSize: WidgetStateProperty.all(const Size(36, 36)),
                             ),
                           ),
                         ],

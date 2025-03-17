@@ -65,6 +65,7 @@ dependencies:
   photo_view: ^0.14.0
   nominatim_flutter: ^0.0.6
   convex_bottom_bar: ^3.2.0
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -92,6 +93,8 @@ flutter:
     - assets/images/avt.png
     - assets/images/hoiAn.png
     - assets/images/sos.png
+    - assets/images/default-avt-male.png
+    - assets/images/default-avt-female.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

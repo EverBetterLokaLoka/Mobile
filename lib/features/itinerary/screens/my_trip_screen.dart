@@ -3,6 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lokaloka/core/styles/colors.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
 import 'package:lokaloka/features/itinerary/screens/detail_itinerary_screen.dart';
+import '../../../core/utils/apis.dart';
 import '../../../globals.dart';
 import '../../../widgets/app_bar_widget.dart';
 import '../../../widgets/notice_widget.dart';
@@ -34,20 +35,27 @@ class _MyTripState extends State<MyTripScreen> {
 
   Future<void> splitLocation(int? id, Itinerary itinerary) async {
     //Change status
-    bool? updateStatus = await ItineraryApi().goItineraryUpdate(id, itinerary);
 
-    //get by id itinerary to go
-    if (!updateStatus!) {
-      return;
-    }
     Itinerary GoItinerary = await ItineraryApi().getItineraryById(id);
-
-    ItineraryApi().checkItineraryStatus(GoItinerary.toJson());
 
     if (GoItinerary.start_date == null) {
       print("❌ Chưa có ngày bắt đầu.");
+      bool? updateStatus =
+          await ItineraryApi().goItineraryUpdate(id, itinerary);
+      //get by id itinerary to go
+      if (!updateStatus!) {
+        return;
+      }
       return;
+    } else {
+      bool? update = await ItineraryApi().updateItinerary(id, itinerary);
+
+      if (!update!) {
+        return;
+      }
     }
+
+    ItineraryApi().checkItineraryStatus(GoItinerary.toJson());
 
     DateTime updatedAt = GoItinerary.updated_at ?? DateTime.now();
     DateTime startDate = GoItinerary.start_date ?? DateTime.now();
@@ -56,6 +64,10 @@ class _MyTripState extends State<MyTripScreen> {
     int daysPassed = updatedAt.difference(startDate).inDays;
 
     if (daysPassed >= initDate) {
+      await showCustomNotice(
+          context, "Congratulations on completing your journey!", "confirm");
+      await ItineraryApi().finishItineraryUpdate(id, itinerary);
+      setState(() {});
       print("✅ Chuyến đi đã hoàn thành!");
       return;
     }
@@ -100,6 +112,7 @@ class _MyTripState extends State<MyTripScreen> {
     setState(() => isLoading = true);
 
     final itineraries = await _itineraryService.fetchItineraries();
+
     setState(() {
       allItineraries = itineraries;
       _filterItineraries();
@@ -107,7 +120,7 @@ class _MyTripState extends State<MyTripScreen> {
     });
   }
 
-  void _deleteItineraryApi(Map<String, dynamic> trip, String userName) async {
+  void _deleteItineraryApi(Map<String, dynamic> trip, String? userName) async {
     bool? confirm;
     while (confirm == null) {
       confirm = await showCustomNotice(
@@ -142,6 +155,10 @@ class _MyTripState extends State<MyTripScreen> {
       filteredItineraries = allItineraries
           .where((trip) => trip['status'] == selectedTab)
           .toList();
+
+      // final itineraryResponse = parseItineraryResponse(filteredItineraries);
+      // //Fetch images for location
+      // String? imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
     });
   }
 
@@ -152,8 +169,7 @@ class _MyTripState extends State<MyTripScreen> {
 
   void _deleteItinerary(Map<String, dynamic> trip) {
     setState(() {
-      _deleteItineraryApi(
-          trip, "Phat"); //Sau khi co profile thi doi cho nay !!!
+      _deleteItineraryApi(trip, userGlobal?.displayName);
     });
     print("Deleted itinerary: ${trip['title']}");
   }
@@ -177,26 +193,29 @@ class _MyTripState extends State<MyTripScreen> {
             DetailItineraryScreen(itineraryItems: data, type: 'view'),
       ),
     );
-    print("data cha${data.locations.length}");
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: AppBarCustom(),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.orange,
-        shape: CircleBorder(),
-        onPressed: () {
-          Navigator.pushNamed(context, "/create-itinerary");
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add, size: 28, color: Colors.white),
-            Text("Itinerary",
-                style: TextStyle(fontSize: 12, color: Colors.white)),
-          ],
+      floatingActionButton: Container(
+        width: 65,
+        height: 65,
+        child: FloatingActionButton(
+          backgroundColor: Colors.orange,
+          shape: CircleBorder(),
+          onPressed: () {
+            Navigator.pushNamed(context, "/create-itinerary");
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: 32, color: Colors.white),
+              Text("Itinerary",
+                  style: TextStyle(fontSize: 12, color: Colors.white)),
+            ],
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -231,7 +250,32 @@ class _MyTripState extends State<MyTripScreen> {
                           itemCount: filteredItineraries.length,
                           itemBuilder: (context, index) {
                             final trip = filteredItineraries[index];
-                            return _buildTripCard(trip);
+
+                            // Ensure 'locations' exists and is not empty
+                            String? locationImageUrl;
+                            if (trip['locations'] != null &&
+                                trip['locations'] is List &&
+                                trip['locations'].isNotEmpty) {
+                              locationImageUrl = trip['locations'][0]['image'];
+                            }
+
+                            return FutureBuilder<String?>(
+                              future: locationImageUrl != null &&
+                                      locationImageUrl.isNotEmpty
+                                  ? ApiService().fetchImageUrl(locationImageUrl)
+                                  : Future.value(null),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return _buildTripCard(trip);
+                                } else if (snapshot.hasError) {
+                                  return _buildTripCard(trip);
+                                } else {
+                                  return _buildTripCard(trip,
+                                      imageItinerary: snapshot.data);
+                                }
+                              },
+                            );
                           },
                         ),
                 ),
@@ -267,7 +311,7 @@ class _MyTripState extends State<MyTripScreen> {
     );
   }
 
-  Widget _buildTripCard(Map<String, dynamic> trip) {
+  Widget _buildTripCard(Map<String, dynamic> trip, {String? imageItinerary}) {
     return Padding(
       padding: const EdgeInsets.all(15),
       child: Card(
@@ -280,12 +324,15 @@ class _MyTripState extends State<MyTripScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/hoiAn.png',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                ),
+                child: imageItinerary != null && imageItinerary.isNotEmpty
+                    ? Image.network(imageItinerary,
+                        width: 80, height: 80, fit: BoxFit.cover)
+                    : Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300], // Placeholder
+                        child: Icon(Icons.image, color: Colors.grey),
+                      ),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -293,11 +340,9 @@ class _MyTripState extends State<MyTripScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${trip['title']}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      trip['title'] ?? 'Unknown Title',
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4),
@@ -315,7 +360,7 @@ class _MyTripState extends State<MyTripScreen> {
                       children: [
                         Icon(Icons.attach_money, size: 16, color: Colors.grey),
                         SizedBox(width: 6),
-                        Text(trip['price'].toString(),
+                        Text(trip['price']?.toString() ?? 'N/A',
                             style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
@@ -324,7 +369,7 @@ class _MyTripState extends State<MyTripScreen> {
                       children: [
                         Icon(Icons.place, size: 16, color: Colors.grey),
                         SizedBox(width: 6),
-                        Text('${trip['locations'].length} Destinations',
+                        Text('${trip['locations']?.length ?? 0} Destinations',
                             style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
@@ -340,7 +385,6 @@ class _MyTripState extends State<MyTripScreen> {
                     PopupMenuButton<String>(
                       onSelected: (value) {
                         if (value == 'share') {
-                          // Share
                           _shareItinerary(trip);
                         } else if (value == 'view') {
                           Itinerary itinerary = Itinerary.fromJson(trip);
@@ -388,8 +432,7 @@ class _MyTripState extends State<MyTripScreen> {
                         style: ElevatedButton.styleFrom(
                           minimumSize: Size(30, 20),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         child: Icon(Icons.more_vert, color: Colors.black),
                       ),
@@ -403,8 +446,7 @@ class _MyTripState extends State<MyTripScreen> {
                         minimumSize: Size(35, 23),
                         backgroundColor: AppColors.primaryColor,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                            borderRadius: BorderRadius.circular(10)),
                       ),
                       child: Text('GO', style: TextStyle(color: Colors.white)),
                     ),
