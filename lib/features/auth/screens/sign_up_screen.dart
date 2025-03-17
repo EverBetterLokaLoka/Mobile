@@ -34,8 +34,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _passwordConfirmController =
-      TextEditingController();
+  final TextEditingController _passwordConfirmController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
@@ -116,15 +115,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           const SizedBox(height: 20),
           _buildTextField(
-              "Full Name",
-              _fullNameController,
-              "Enter your fullname",
-              Icon(Icons.perm_identity_rounded, color: AppColors.orangeColor)),
+              key: Key('full_name_field'),
+              label: "Full Name",
+              controller: _fullNameController,
+              hintText: "Enter your fullname",
+              icon: Icon(Icons.perm_identity_rounded, color: AppColors.orangeColor)),
           _buildEmailField(),
           _buildPasswordField("Password", _passwordController),
           _buildConfirmPasswordField(),
           const SizedBox(height: 20),
           ElevatedButton(
+            key: Key('sign_up_button'),
             onPressed: () => _signUp(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.orangeColor,
@@ -141,6 +142,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           const SizedBox(height: 20),
           _buildSocialLogin(),
           ElevatedButton.icon(
+            key: Key('google_sign_up_button'),
             onPressed: () async {
               final user = await AuthService().signInWithGoogle();
               if (user != null) {
@@ -195,8 +197,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller,
-      String hintText, Icon icon) {
+  Widget _buildTextField({required Key key, required String label, required TextEditingController controller,
+    required String hintText, required Icon icon}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -206,6 +208,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ]),
         const SizedBox(height: 5),
         TextFormField(
+          key: key,
           controller: controller,
           decoration: InputDecoration(
             hintText: hintText,
@@ -213,6 +216,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
           validator: (value) {
+            String trimmedValue = value?.trim() ?? '';
             if (value == null || value.isEmpty) {
               return "Please enter your full name";
             }
@@ -240,19 +244,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ]),
         const SizedBox(height: 5),
         TextFormField(
+          key: Key('email_field'),
           controller: _emailController,
           decoration: InputDecoration(
             hintText: "Enter your email",
-            prefixIcon:
-                const Icon(Icons.email_rounded, color: AppColors.orangeColor),
+            prefixIcon: const Icon(Icons.email_rounded, color: AppColors.orangeColor),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
           validator: (value) {
-            if (value == null || value.isEmpty) {
+            // Loại bỏ khoảng trắng đầu và cuối chuỗi
+            String trimmedValue = value?.trim() ?? '';
+
+            if (trimmedValue.isEmpty) {
               return "Please enter your email.";
             }
             if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-                .hasMatch(value)) {
+                .hasMatch(trimmedValue)) {
               return "Please enter a valid email address.";
             }
             if (messageReturn.isNotEmpty) {
@@ -282,7 +289,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ]),
         const SizedBox(height: 5),
         TextFormField(
-          controller: _passwordController,
+          key: Key('password_field'),
+          controller: controller,
           obscureText: _obscurePassword,
           decoration: InputDecoration(
             hintText: "Enter your password",
@@ -341,6 +349,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ]),
         const SizedBox(height: 5),
         TextFormField(
+          key: Key('confirm_password_field'),
           controller: _passwordConfirmController,
           obscureText: _obscureConfirmPassword,
           decoration: InputDecoration(

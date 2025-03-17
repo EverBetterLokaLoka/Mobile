@@ -78,13 +78,13 @@ class _LoginState extends State<Login> {
                   child: DropdownButton<String>(
                     value: "English",
                     icon:
-                        const Icon(Icons.arrow_drop_down, color: Colors.white),
+                    const Icon(Icons.arrow_drop_down, color: Colors.white),
                     items: <String>["English", "Vietnamese"]
                         .map((String value) => DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value,
-                                  style: const TextStyle(color: Colors.white)),
-                            ))
+                      value: value,
+                      child: Text(value,
+                          style: const TextStyle(color: Colors.white)),
+                    ))
                         .toList(),
                     onChanged: (String? newValue) {},
                   ),
@@ -141,6 +141,7 @@ class _LoginState extends State<Login> {
                         ]),
                         const SizedBox(height: 5),
                         TextFormField(
+                          key: Key('email_field'),
                           controller: _emailController,
                           decoration: InputDecoration(
                             hintText: "Enter your email",
@@ -176,6 +177,7 @@ class _LoginState extends State<Login> {
                         ]),
                         const SizedBox(height: 5),
                         TextFormField(
+                          key: Key('password_field'),
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
@@ -221,6 +223,7 @@ class _LoginState extends State<Login> {
                         SizedBox(
                           width: double.infinity,
                           child: TextButton(
+                            key: Key('forgot_password_button'),
                             onPressed: () {
                               Navigator.push(
                                 context,
@@ -241,8 +244,9 @@ class _LoginState extends State<Login> {
                     ),
                   ),
                 ),
-                SizedBox(height: 30),
+                const SizedBox(height: 30),
                 ElevatedButton(
+                  key: Key('login_button'),
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
                       login(context);
@@ -261,7 +265,7 @@ class _LoginState extends State<Login> {
                     style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
-                SizedBox(height: 30),
+                const SizedBox(height: 30),
                 Row(
                   children: const [
                     Expanded(child: Divider(thickness: 1, color: Colors.grey)),
@@ -272,8 +276,9 @@ class _LoginState extends State<Login> {
                     Expanded(child: Divider(thickness: 1, color: Colors.grey)),
                   ],
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 ElevatedButton.icon(
+                  key: Key('google_login_button'),
                   onPressed: () async {
                     final user = await AuthService().signInWithGoogle();
                     if (user != null) {
@@ -302,7 +307,7 @@ class _LoginState extends State<Login> {
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
