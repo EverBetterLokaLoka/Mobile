@@ -125,8 +125,6 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           _uploadedImageUrls.add(jsonResponse['data']);
           _checkPublishButtonStatus();
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image uploaded successfully!')));
       } else {
         final responseData = await response.stream.bytesToString();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: ${response.statusCode} - $responseData')));
@@ -423,7 +421,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post published successfully!')));
+          print("success create post");
         }
         return true; // Publish thành công
       } else {

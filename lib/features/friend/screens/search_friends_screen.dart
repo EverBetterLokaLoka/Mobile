@@ -345,7 +345,7 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
                     if (currentUserId != null) {
                       bool notificationCancelled = await _friendService.cancelNotification(int.parse(currentUserId), friend.id);
                       if (notificationCancelled) {
-                        _showSuccessSnackBar('Canceled friend request to ${friend.username} and notification cancelled.');
+                        _showSuccessSnackBar('Canceled friend request to ${friend.username}.');
                       } else {
                         _showErrorSnackBar('Failed to cancel notification after cancelling friend request.');
                       }

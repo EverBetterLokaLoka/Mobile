@@ -89,7 +89,6 @@ class _AddNewFriendsScreenState extends State<AddNewFriendsScreen> with SingleTi
         setState(() {
           _suggestedFriends.removeWhere((f) => f.id == friend.id);
         });
-        _showSuccessSnackBar('Deleted friend request from ${friend.username}');
       }else{
         _showErrorSnackBar('Failed to delete ${friend.username}');
       }

@@ -205,7 +205,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
                             if (_formKey.currentState!.validate()) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text('Đang tạo hành trình...')),
+                                    content: Text('Creating an itinerary...')),
                               );
                             }
                           },

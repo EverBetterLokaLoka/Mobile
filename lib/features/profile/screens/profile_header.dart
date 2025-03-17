@@ -64,7 +64,6 @@ class _ProfileHeaderState extends State<ProfileHeader> {
             await _saveAvatar(imageUrl);
 
             setState(() => _avatarUrl = imageUrl);
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload thành công!')));
           }
           // If 'data' is a map
           else if (jsonResponse['data'] is Map) {
@@ -77,7 +76,6 @@ class _ProfileHeaderState extends State<ProfileHeader> {
               await _saveAvatar(imageUrl);
 
               setState(() => _avatarUrl = imageUrl);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload thành công!')));
             } else {
               throw Exception('Image URL is empty in the response');
             }
@@ -91,7 +89,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
         throw Exception('Upload failed with status: ${response.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -114,12 +112,12 @@ class _ProfileHeaderState extends State<ProfileHeader> {
 
       if (response.statusCode == 201) {
         // Optionally handle success
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Avatar saved successfully!')));
+        print("success");
       } else {
         throw Exception('Failed to save avatar');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi lưu avatar: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error to save avatar: $e')));
     }
   }
   @override

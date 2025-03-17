@@ -198,9 +198,6 @@ class _EditPostScreenState extends State<EditPostScreen> {
         );
 
         widget.onUpdate(updatedPost);
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Post updated successfully!')));
-
         Navigator.of(context).pop();
       } else {
         print('Failed to update post: ${response.statusCode}');
