@@ -282,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
             physics: NeverScrollableScrollPhysics(),
             children: [
               _buildExperienceItem(
-                  LucideIcons.map, "Travel Itinerary", "/navigation-map"),
+                  LucideIcons.map, "Travel Itinerary", "/my-trip"),
               _buildExperienceItem(LucideIcons.users, "Friends", "/friend"),
               _buildExperienceItem(LucideIcons.shieldAlert, "SOS", "/sos"),
               _buildExperienceItem(LucideIcons.camera, "Moment", "/moment"),
