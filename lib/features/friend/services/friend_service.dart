@@ -288,5 +288,37 @@ class FriendService {
       throw Exception('Error: $e');
     }
   }
+  Future<bool> sendNotification(String message, int friendId, String currentUserSend) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/notifications'), // Thay thế bằng URL thực tế của bạn
+        headers: await _getHeaders(), // Sử dụng hàm _getHeaders để có tiêu đề xác thực
+        body: jsonEncode({
+          'userId': friendId, // ID của người nhận thông báo
+          'description': message, // Mô tả thông báo
+          'foreignId': currentUserSend // ID của người gửi lời mời kết bạn
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return true; // Trả về true nếu thành công
+      } else {
+        developer.log('Failed to send notification: ${response.body}');
+        return false; // Trả về false nếu không thành công
+      }
+    } catch (e) {
+      developer.log('Error in sendNotification: $e');
+      return false; // Trả về false trong trường hợp có lỗi
+    }
+  }
+  Future<bool> cancelNotification(int currentUserId, int foreignId) async {
+    try {
+      final response = await ApiService().request(path: '/notifications/$foreignId/$currentUserId', method: "DELETE", typeUrl: "baseUrl", currentPath: '');
+      return true;
+    } catch (e) {
+      developer.log('Error in deleteFriendRequest: $e');
+      throw Exception('Error: $e');
+    }
+  }
 }
 

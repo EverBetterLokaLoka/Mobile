@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lokaloka/features/friend/screens/friends_screen.dart';
 import 'package:lokaloka/features/moments/screens/moment_screen.dart';
+import 'package:lokaloka/features/notification/screens/notification_screen.dart';
 import 'package:lokaloka/features/profile/screens/profile_screen.dart';
 import 'package:lokaloka/features/auth/screens/sign_up_screen.dart';
 import 'package:lokaloka/features/itinerary/screens/my_trip_screen.dart';
@@ -50,6 +51,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => MomentsScreen());
       case '/friend':
         return MaterialPageRoute(builder: (_) => FriendsScreen());
+      case '/notification':
+        return MaterialPageRoute(builder: (_) => NotificationScreen());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

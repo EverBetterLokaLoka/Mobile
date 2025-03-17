@@ -107,7 +107,7 @@ class Menu extends StatelessWidget {
                   _buildMenuItem(
                       context, Icons.photo_library, "Moment", '/moment',
                       iconColor: AppColors.orangeColor),
-                  _buildMenuItem(context, Icons.group, "Friends", '/friends',
+                  _buildMenuItem(context, Icons.group, "Friends", '/friend',
                       iconColor: AppColors.primaryColor),
                   _buildMenuItem(context, Icons.map, "Map", '/map',
                       iconColor: AppColors.primaryColor),

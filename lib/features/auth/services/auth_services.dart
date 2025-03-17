@@ -264,4 +264,27 @@ class AuthService {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString("user_name");
   }
+
+  Future<String?> getUserIdFromToken() async {
+    try {
+      String? token = await getToken();
+      if (token == null) {
+        print("No token found!");
+        return null;
+      }
+
+      Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+
+      // Giả sử user ID được lưu dưới khóa 'userId' trong token
+      if (decodedToken.containsKey('id')) {
+        return decodedToken['id'];
+      } else {
+        print("Token doesn't contain userId!");
+        return null;
+      }
+    } catch (e) {
+      print("Error decoding token: $e");
+      return null;
+    }
+  }
 }
