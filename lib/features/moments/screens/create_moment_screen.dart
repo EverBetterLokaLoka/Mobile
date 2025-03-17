@@ -526,6 +526,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Post published successfully!')));
+          print("success create post");
         }
         return true; // Publish thành công
       } else {

@@ -172,9 +172,6 @@ class _HomeTabState extends State<HomeTab> {
         setState(() {
           _posts.removeWhere((post) => post.id == postId);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Post deleted successfully')),
-        );
       } catch (e) {
         print('Failed to delete post: $e');
         ScaffoldMessenger.of(context).showSnackBar(
