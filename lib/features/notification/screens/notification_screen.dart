@@ -62,9 +62,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     try {
       await _notificationService.deleteNotification(userId, foreignId);
       await _fetchNotifications(); // Làm mới danh sách notifications
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notification deleted')),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete notification: ${e.toString()}')),
