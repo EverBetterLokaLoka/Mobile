@@ -17,7 +17,6 @@ class CreateItinerary extends StatefulWidget {
 
 void updateTravelDays(int days) {
   travelDays = days;
-  print("travelDays$travelDays");
 }
 
 class _CreateItineraryState extends State<CreateItinerary> {

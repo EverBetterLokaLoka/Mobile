@@ -1,7 +1,74 @@
 import 'package:flutter/material.dart';
 
-Future<bool?> showCustomNotice(
-    BuildContext context, String message, String type) async {
+Future<bool> showNotice(BuildContext context, String message, String type) async {
+  if (type == "error") {
+    showTopNotice(context, message, type);
+    return Future.value(false);
+  } else {
+    return showCustomNotice(context, message, type);
+  }
+}
+
+void showTopNotice(BuildContext context, String message, String type) {
+  OverlayState overlayState = Overlay.of(context);
+  if (overlayState == null) return;
+  late OverlayEntry overlayEntry;
+
+  overlayEntry = OverlayEntry(
+    builder: (context) => Positioned(
+      top: MediaQuery.of(context).padding.top + 5,
+      left: 10,
+      right: 10,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: type == "error" ? Colors.red : Colors.green,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              )
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                type == "error" ? Icons.error : Icons.check_circle,
+                color: Colors.white,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close, color: Colors.white),
+                onPressed: () {
+                  overlayEntry.remove();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  overlayState.insert(overlayEntry);
+
+  Future.delayed(Duration(seconds: 3), () {
+    overlayEntry.remove();
+  });
+}
+
+Future<bool> showCustomNotice(BuildContext context, String message, String type) async {
   return showDialog<bool>(
     context: context,
     builder: (BuildContext context) {
@@ -26,21 +93,22 @@ Future<bool?> showCustomNotice(
                   Expanded(
                     child: Text(
                       message,
-                      style: const TextStyle(fontSize: 16),
+                      style: const TextStyle(fontSize: 14),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).pop(false);
+                      Navigator.of(context).pop(true); // Trả về true nếu nhấn OK
                     },
                     style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[700],
+                      backgroundColor:
+                      type == "error" ? Colors.red : Colors.cyan,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 10),
                       shape: RoundedRectangleBorder(
@@ -48,17 +116,18 @@ Future<bool?> showCustomNotice(
                       ),
                     ),
                     child: const Text(
-                      "Cancel",
+                      "OK",
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
-                  if (type == "confirm")
+                  if (type != "error") ...[
+                    const SizedBox(width: 10),
                     TextButton(
                       onPressed: () {
-                        Navigator.of(context).pop(true);
+                        Navigator.of(context).pop(false);
                       },
                       style: TextButton.styleFrom(
-                        backgroundColor: Colors.cyan,
+                        backgroundColor: Colors.grey[700],
                         padding: const EdgeInsets.symmetric(
                             horizontal: 20, vertical: 10),
                         shape: RoundedRectangleBorder(
@@ -66,10 +135,11 @@ Future<bool?> showCustomNotice(
                         ),
                       ),
                       child: const Text(
-                        "OK",
+                        "Cancel",
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
+                  ]
                 ],
               ),
             ],
@@ -77,5 +147,5 @@ Future<bool?> showCustomNotice(
         ),
       );
     },
-  );
+  ).then((value) => value ?? false);
 }

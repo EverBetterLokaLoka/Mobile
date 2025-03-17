@@ -4,13 +4,50 @@ import 'package:lokaloka/core/styles/colors.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
 import 'package:lokaloka/features/itinerary/screens/detail_itinerary_screen.dart';
 
+import '../../../core/utils/apis.dart';
 import '../../../globals.dart';
 
 class ItineraryCreated extends StatelessWidget {
   final ItineraryResponse data;
-  final image;
+  final String image;
 
-  const ItineraryCreated({Key? key, required this.data, required this.image}) : super(key: key);
+  const ItineraryCreated({Key? key, required this.data, required this.image})
+      : super(key: key);
+
+  List<String> getLocationNames(ItineraryResponse itineraryResponse) {
+    return itineraryResponse.itinerary
+        .expand((itinerary) => itinerary.locations)
+        .map((location) => location.name)
+        .toList();
+  }
+
+  Future<List<String>> fetchImages(List<String> locationNames) async {
+    return await Future.wait(
+      locationNames.map((name) async {
+        return await ApiService().fetchImageUrl(name) ?? '';
+      }),
+    );
+  }
+
+  Future<void> updateItineraryWithImages(
+      ItineraryResponse itineraryResponse) async {
+    List<String> locationNames = getLocationNames(itineraryResponse);
+    images = await fetchImages(locationNames);
+
+    int index = 0;
+    for (var itinerary in itineraryResponse.itinerary) {
+      for (var location in itinerary.locations) {
+        if (index < images.length) {
+          location.image = images[index];
+          index++;
+        }
+      }
+    }
+  }
+
+  void fetchImagesForLocations(ItineraryResponse data) async {
+    await updateItineraryWithImages(data);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +95,15 @@ class ItineraryCreated extends StatelessWidget {
   Widget _buildItineraryCard(BuildContext context, Itinerary item) {
     return InkWell(
       onTap: () {
+        fetchImagesForLocations(data);
+        final itinerary = data.itinerary.firstWhere((it) => it.id == item.id);
         Navigator.push(
           context,
           CupertinoPageRoute(
-            builder: (context) =>
-                DetailItineraryScreen(itineraryItems: item, type: "detail"),
+            builder: (context) => DetailItineraryScreen(
+              itineraryItems: itinerary,
+              type: "detail",
+            ),
           ),
         );
       },
@@ -77,24 +118,33 @@ class ItineraryCreated extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  // child: item.locations.isNotEmpty
-                  //     ? Image.network(
-                  //   item.locations.first.name,
-                  //   width: 80,
-                  //   height: 80,
-                  //   fit: BoxFit.cover,
-                  //   errorBuilder: (context, error, stackTrace) {
-                  //     return Icon(Icons.image_not_supported, size: 80);
-                  //   },
-                  // )
-                  //     : Icon(Icons.image, size: 80),
-                  child: Image.network(
-                    image,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                  )),
+                borderRadius: BorderRadius.circular(8.0),
+                child: Image.network(
+                  image,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (BuildContext context, Widget child,
+                      ImageChunkEvent? loadingProgress) {
+                    if (loadingProgress == null) {
+                      return child;
+                    }
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                (loadingProgress.expectedTotalBytes ?? 1)
+                            : null,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(Icons.image_not_supported,
+                        size: 80,
+                        color: Colors.grey);
+                  },
+                ),
+              ),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -146,11 +196,16 @@ class ItineraryCreated extends StatelessWidget {
               ),
               ElevatedButton(
                 onPressed: () {
+                  fetchImagesForLocations(data);
+                  final itinerary =
+                      data.itinerary.firstWhere((it) => it.id == item.id);
                   Navigator.push(
                     context,
                     CupertinoPageRoute(
                       builder: (context) => DetailItineraryScreen(
-                          itineraryItems: item, type: "detail"),
+                        itineraryItems: itinerary,
+                        type: "detail",
+                      ),
                     ),
                   );
                 },

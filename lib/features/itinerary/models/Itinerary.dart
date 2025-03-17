@@ -11,6 +11,10 @@ class ItineraryResponse {
     if (data != null) {
       final itineraryData = data['itineraries'] ?? data['itinerary'];
 
+      if (itineraryData == null) {
+        return ItineraryResponse(itinerary: []);
+      }
+
       List<dynamic> itineraryList = [];
 
       if (itineraryData is List) {
@@ -90,6 +94,7 @@ class Location {
   final String name;
   final int day;
   final String description;
+  late String? image;
   final bool? flag;
   final DateTime timeStart;
   final DateTime timeFinish;
@@ -103,6 +108,7 @@ class Location {
     required this.name,
     required this.day,
     required this.description,
+    required this.image,
     this.flag,
     required this.timeStart,
     required this.timeFinish,
@@ -118,6 +124,7 @@ class Location {
       name: json['name'],
       day: json['day'],
       description: json['description'],
+      image: json['image'].toString(),
       flag: json['flag'],
       timeStart: DateTime.parse(json['time_start']),
       timeFinish: DateTime.parse(json['time_finish']),
@@ -178,5 +185,7 @@ class Activity {
 
 ItineraryResponse parseItineraryResponse(String jsonStr) {
   final Map<String, dynamic> jsonData = json.decode(jsonStr);
+  print("JSON Data nhận được: $jsonData");
+
   return ItineraryResponse.fromJson(jsonData);
 }

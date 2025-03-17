@@ -40,12 +40,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   late final Map<String, dynamic> responseData;
+  String messageReturn = "";
 
   Future<void> _signUp(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
     final authService = AuthService();
 
-    await authService.signUp(
+    String message = await authService.signUp(
       context: context,
       fullName: _fullNameController.text,
       email: _emailController.text,
@@ -54,6 +55,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       onStart: () => setState(() => _isLoading = true),
       onFinish: () => setState(() => _isLoading = false),
     );
+    messageReturn = message;
   }
 
   @override
@@ -211,13 +213,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
           validator: (value) {
-            // Loại bỏ khoảng trắng đầu và cuối chuỗi
-            String trimmedValue = value?.trim() ?? '';
-
-            if (trimmedValue.isEmpty) {
-              return "Please enter your $label";
+            if (value == null || value.isEmpty) {
+              return "Please enter your full name";
             }
-            if (!RegExp(r'^[a-zA-ZÀ-ỹ\s]+$').hasMatch(trimmedValue)) {
+            if (value.contains(" ")) {
+              return "Please enter your full name.";
+            }
+            if (!RegExp(r'^[a-zA-ZÀ-ỹ]+$').hasMatch(value)) {
               return "Only letters are allowed.";
             }
             return null;
@@ -251,7 +253,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
             }
             if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
                 .hasMatch(value)) {
-              return "Invalid email or password. Please try again.";
+              return "Please enter a valid email address.";
+            }
+            if (messageReturn.isNotEmpty) {
+              return messageReturn.length > 40
+                  ? messageReturn.replaceAllMapped(
+                      RegExp(r'(.{40})'), (match) => '${match.group(0)}\n')
+                  : messageReturn;
             }
             return null;
           },
@@ -297,10 +305,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
               return "Please enter your $label";
             }
             if (value.length < 8 || value.length > 16) {
-              return "Password must be between 8 and 16 characters.";
+              return "Password must be between 8 \nand 16 characters.";
             }
             if (value.contains(' ')) {
-              return "Password cannot contain spaces.";
+              return "Please enter your password.";
             }
             if (!RegExp(r'[A-Z]').hasMatch(value)) {
               return "Password must contain at least one uppercase letter.";
@@ -356,8 +364,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
           validator: (value) {
             if (value == null || value.isEmpty) {
               return "Please enter your confirm password.";
-            } else if (value.trim().isEmpty) {
-              return "Must contain characters other than spaces.";
+            } else if (value.contains(" ")) {
+              return "Please enter your confirm password.";
+            } else if (value.isEmpty) {
+              return "Must contain characters.";
             } else if (value != _passwordController.text) {
               return "Passwords do not match. Please try again.";
             }
