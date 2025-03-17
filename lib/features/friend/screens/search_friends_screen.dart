@@ -144,11 +144,12 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
           _friendStatuses[lowerEmail] = "PENDING";
         });
 
-        final notificationMessage = 'Bạn nhận được yêu cầu kết bạn từ $currentUserLogin';
+        final notificationMessage = 'You received a friend request from $currentUserLogin';
         final notificationId = await _friendService.sendNotification(notificationMessage, friend.userId, currentUserId);
 
         if (notificationId != null) {
-          _showSuccessSnackBar('Friend request sent to ${friend.username} and notification sent.');
+          print("success");
+          // _showSuccessSnackBar('Friend request sent to ${friend.username} and notification sent.');
         } else {
           _showErrorSnackBar('Friend request sent to ${friend.username}, but failed to send notification.');
         }
