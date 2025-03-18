@@ -144,7 +144,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
                       ),
                       validator: (value) {
                         if (_selectedLocation == null) {
-                          return 'Please select a destination';
+                          return 'Destination is required.';
                         }
                         return null;
                       },
@@ -169,7 +169,7 @@ class _CreateItineraryState extends State<CreateItinerary> {
                     labelText: 'How many days?*',
                     hintText: 'E.g., 2',
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
+                    prefixIcon: Icon(Icons.calendar_month_sharp),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {

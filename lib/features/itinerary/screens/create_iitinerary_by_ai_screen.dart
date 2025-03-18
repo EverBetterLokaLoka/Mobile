@@ -173,10 +173,10 @@ class _CreateByAiState extends State<CreateByAi> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a budget';
+                          return 'Interest is required.';
                         }
                         if (!RegExp(r'^\d+$').hasMatch(value)) {
-                          return 'Only numbers are allowed';
+                          return 'Please enter only enter budget as number.';
                         }
                         if (int.tryParse(value)! <= 0) {
                           return 'Budget must be greater than 0';
@@ -219,7 +219,7 @@ class _CreateByAiState extends State<CreateByAi> {
                       Padding(
                         padding: const EdgeInsets.only(top: 5, left: 10),
                         child: Text(
-                          'Please select at least one interest.',
+                          'Budget is required.',
                           style: TextStyle(color: Colors.red, fontSize: 14),
                         ),
                       ),

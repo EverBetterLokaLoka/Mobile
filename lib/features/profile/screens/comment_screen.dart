@@ -7,11 +7,15 @@ import 'package:lokaloka/features/profile/services/profile_services.dart';
 class CommentScreen extends StatefulWidget {
   final Post post;
   final Function(Comment) onCommentAdded;
+  final Function(Comment) onCommentUpdated;
+  final Function(int) onCommentDeleted;
 
   const CommentScreen({
     Key? key,
     required this.post,
     required this.onCommentAdded,
+    required this.onCommentUpdated,
+    required this.onCommentDeleted,
   }) : super(key: key);
 
   @override
@@ -22,15 +26,36 @@ class _CommentScreenState extends State<CommentScreen> {
   final TextEditingController _commentController = TextEditingController();
   final ProfileService _profileService = ProfileService();
   late List<Comment> _comments;
-  bool _isSending = false;
-  int currentUserId = 0; // User ID of the current user
-  Comment? editingComment; // Hold the comment being edited
+  bool _isLoading = false;
+  int currentUserId = 0;
+  Comment? editingComment;
+  bool _hasCommentText = false;
 
   @override
   void initState() {
     super.initState();
     _comments = List.from(widget.post.comments);
     _getCurrentUserProfile();
+    _commentController.addListener(_updateCommentStatus);
+  }
+
+  void _updateCommentStatus() {
+    final hasText = _commentController.text.trim().isNotEmpty;
+    if (hasText != _hasCommentText) {
+      setState(() {
+        _hasCommentText = hasText;
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(CommentScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.post.comments != oldWidget.post.comments) {
+      setState(() {
+        _comments = List.from(widget.post.comments);
+      });
+    }
   }
 
   Future<void> _getCurrentUserProfile() async {
@@ -40,11 +65,12 @@ class _CommentScreenState extends State<CommentScreen> {
     });
   }
 
-  Future<void> _addOrUpdateComment() async {
+  // Tách riêng hàm thêm comment mới
+  Future<void> _addNewComment() async {
     if (_commentController.text.isEmpty) return;
 
     setState(() {
-      _isSending = true;
+      _isLoading = true;
     });
 
     try {
@@ -54,95 +80,115 @@ class _CommentScreenState extends State<CommentScreen> {
       final String userName = userProfile?.full_name ?? 'Unknown User';
       final String avatar = userProfile?.avatar ?? '';
 
-      if (editingComment == null) {
-        // Create a new comment
-        Comment newComment = await _profileService.addComment(widget.post.id, _commentController.text);
-        newComment = Comment(
-          id: newComment.id,
-          content: newComment.content,
-          postId: widget.post.id,
-          userId: userId,
-          userEmail: userEmail,
-          userName: userName,
-          createdAt: DateTime.now().toIso8601String(),
-          avatar: avatar,
-          destroyed: null,
-        );
+      // Gọi API để thêm comment mới
+      Comment newComment = await _profileService.addComment(widget.post.id, _commentController.text);
 
-        setState(() {
-          _comments.add(newComment);
-        });
-        widget.onCommentAdded(newComment);
-      } else {
-        // Update the existing comment
-        Comment updatedComment = await _profileService.updateComment(widget.post.id, editingComment!.id, _commentController.text);
-        setState(() {
-          int index = _comments.indexWhere((c) => c.id == editingComment!.id);
-          if (index != -1) {
-            _comments[index] = Comment(
-              id: updatedComment.id,
-              content: updatedComment.content,
-              postId: widget.post.id,
-              userId: userId,
-              userEmail: userEmail,
-              userName: userName,
-              createdAt: updatedComment.createdAt,
-              avatar: avatar,
-              destroyed: null,
-            );
-          }
-        });
-        editingComment = null; // Clear the editing comment variable
-      }
+      // Tạo đối tượng comment đầy đủ
+      newComment = Comment(
+        id: newComment.id,
+        content: newComment.content,
+        postId: widget.post.id,
+        userId: userId,
+        userEmail: userEmail,
+        userName: userName,
+        createdAt: DateTime.now().toIso8601String(),
+        avatar: avatar,
+        destroyed: null,
+      );
 
-      _commentController.clear();
-      _isSending = false;
-    } catch (error) {
-      print('Error saving comment: $error');
+      // Cập nhật UI
       setState(() {
-        _isSending = false;
+        _comments.add(newComment);
+        _commentController.clear();
+      });
+
+      // Thông báo cho màn hình cha
+      widget.onCommentAdded(newComment);
+    } catch (error) {
+      print('Error adding comment: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add comment. Please try again.')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
     }
   }
 
-  Future<void> _editComment(Comment comment) async {
-    _commentController.text = comment.content;
-    editingComment = comment; // Set the comment being edited
+  // Tách riêng hàm cập nhật comment
+  Future<void> _updateExistingComment() async {
+    if (editingComment == null || _commentController.text.isEmpty) return;
 
-    final bool? shouldUpdate = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Edit Comment'),
-          content: TextField(
-            controller: _commentController,
-            decoration: InputDecoration(
-              hintText: 'Edit your comment...',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-                editingComment = null; // Clear the editing comment variable on cancel
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
+    setState(() {
+      _isLoading = true;
+    });
 
-    if (shouldUpdate == true) {
-      // Call _addOrUpdateComment to handle the update
-      _addOrUpdateComment();
+    try {
+      UserNormal? userProfile = await _profileService.getUserProfile();
+      final int userId = userProfile?.id ?? 0;
+      final String userEmail = userProfile?.email ?? 'user@example.com';
+      final String userName = userProfile?.full_name ?? 'Unknown User';
+      final String avatar = userProfile?.avatar ?? '';
+
+      // Gọi API để cập nhật comment
+      Comment updatedComment = await _profileService.updateComment(
+          widget.post.id,
+          editingComment!.id,
+          _commentController.text
+      );
+
+      // Tạo đối tượng comment đầy đủ
+      Comment fullUpdatedComment = Comment(
+        id: updatedComment.id,
+        content: updatedComment.content,
+        postId: widget.post.id,
+        userId: userId,
+        userEmail: userEmail,
+        userName: userName,
+        createdAt: editingComment!.createdAt, // Giữ nguyên thời gian tạo
+        avatar: avatar,
+        destroyed: null,
+      );
+
+      // Cập nhật UI
+      setState(() {
+        int index = _comments.indexWhere((c) => c.id == editingComment!.id);
+        if (index != -1) {
+          _comments[index] = fullUpdatedComment;
+        }
+        editingComment = null;
+        _commentController.clear();
+      });
+
+      // Thông báo cho màn hình cha
+      widget.onCommentUpdated(fullUpdatedComment);
+    } catch (error) {
+      print('Error updating comment: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update comment. Please try again.')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
+  }
+
+  // Hàm xử lý khi nhấn nút gửi/cập nhật
+  void _handleSendButtonPress() {
+    if (editingComment != null) {
+      _updateExistingComment();
+    } else {
+      _addNewComment();
+    }
+  }
+
+  Future<void> _editComment(Comment comment) async {
+    setState(() {
+      editingComment = comment;
+      _commentController.text = comment.content; // Đặt nội dung comment vào controller
+    });
   }
 
   Future<void> _deleteComment(int commentId) async {
@@ -155,15 +201,15 @@ class _CommentScreenState extends State<CommentScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: Text('Delete'),
-            ),
-            TextButton(
-              onPressed: () {
                 Navigator.of(context).pop(false);
               },
               child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: Text('Delete'),
             ),
           ],
         );
@@ -171,13 +217,27 @@ class _CommentScreenState extends State<CommentScreen> {
     );
 
     if (shouldDelete == true) {
+      setState(() {
+        _isLoading = true;
+      });
+
       try {
         await _profileService.deleteComment(commentId);
         setState(() {
           _comments.removeWhere((c) => c.id == commentId);
         });
+
+        // Thông báo cho màn hình cha
+        widget.onCommentDeleted(commentId);
       } catch (error) {
         print('Error deleting comment: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete comment. Please try again.')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -276,6 +336,7 @@ class _CommentScreenState extends State<CommentScreen> {
 
   @override
   void dispose() {
+    _commentController.removeListener(_updateCommentStatus);
     _commentController.dispose();
     super.dispose();
   }
@@ -305,7 +366,7 @@ class _CommentScreenState extends State<CommentScreen> {
             child: TextField(
               controller: _commentController,
               decoration: InputDecoration(
-                hintText: 'Add a comment...',
+                hintText: editingComment == null ? 'Add a comment...' : 'Edit comment...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -316,20 +377,37 @@ class _CommentScreenState extends State<CommentScreen> {
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _addOrUpdateComment(),
+              onSubmitted: (_) => _hasCommentText ? _handleSendButtonPress() : null,
             ),
           ),
           SizedBox(width: 8),
-          _isSending
+          _isLoading
               ? SizedBox(
             width: 24,
             height: 24,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
               : IconButton(
-            icon: Icon(Icons.send, color: Theme.of(context).primaryColor),
-            onPressed: _addOrUpdateComment,
+            icon: Icon(
+              editingComment == null ? Icons.send : Icons.check,
+              color: _hasCommentText
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey,
+            ),
+            onPressed: _hasCommentText
+                ? _handleSendButtonPress
+                : null,
           ),
+          if (editingComment != null)
+            IconButton(
+              icon: Icon(Icons.close, color: Colors.grey),
+              onPressed: () {
+                setState(() {
+                  editingComment = null;
+                  _commentController.clear();
+                });
+              },
+            ),
         ],
       ),
     );
@@ -344,7 +422,6 @@ class _CommentScreenState extends State<CommentScreen> {
       ),
       body: Column(
         children: [
-          // Build post summary or any additional UI elements here.
           Expanded(
             child: _comments.isEmpty
                 ? Center(child: Text('No comments yet. Be the first to comment!'))

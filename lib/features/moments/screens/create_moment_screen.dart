@@ -53,6 +53,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   final TextEditingController _addressController = TextEditingController();
   LatLng? _selectedLocation;
   bool _isLoading = false;
+  bool _isPublishing = false; // Thêm biến để theo dõi trạng thái đăng bài
 
   @override
   void initState() {
@@ -81,16 +82,24 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
   void _checkPublishButtonStatus() {
     setState(() {
-      _isPublishEnabled =
-          _contentController.text.isNotEmpty || _uploadedImageUrls.isNotEmpty;
+      _isPublishEnabled = _contentController.text.isNotEmpty || _uploadedImageUrls.isNotEmpty;
     });
   }
 
   void _handlePublish() {
+    if (_isPublishing) return; // Ngăn chặn nhiều lần nhấn nút publish
+
+    setState(() {
+      _isPublishing = true;
+    });
+
     _publishPost().then((success) {
       if (success) {
         Navigator.pop(context, true); // Trả về true nếu đã publish thành công
       }
+      setState(() {
+        _isPublishing = false;
+      });
     });
   }
 
@@ -102,11 +111,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     try {
       final pickedFiles = await _picker.pickMultiImage();
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        for (var pickedFile in pickedFiles) {
-          setState(() {
-            _selectedImages.add(File(pickedFile.path));
-          });
-        }
+        setState(() {
+          _selectedImages = pickedFiles.map((file) => File(file.path)).toList();
+        });
 
         String? token = await AuthService().getToken();
         if (token != null) {
@@ -176,55 +183,6 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     });
   }
 
-  String imageUrl = '';
-  // Future<void> _getCoordinates(String address) async {
-  //   setState(() {
-  //             // _selectedLocation = LatLng(lat, lon);
-  //             //   staticMapUrl =
-  //               // "https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=15&size=650x450&markers=$lat,$lon,red-pushpin";
-  //           });
-  // }
-
-  // Future<void> _getCoordinates(String address) async {
-  //   setState(() => _isLoading = true);
-  //   String url = "https://nominatim.openstreetmap.org/search?q=$address&format=json";
-  //
-  //   try {
-  //     final response = await Dio().get(
-  //       url,
-  //       options: Options(headers: {
-  //         "User-Agent": "lokaloka/2.0 (lokaloka@gmail.com)" // Thay bằng thông tin của bạn
-  //       }),
-  //     );
-  //
-  //     if (response.statusCode == 200 && response.data.isNotEmpty) {
-  //       double lat = double.parse(response.data[0]["lat"]);
-  //       double lon = double.parse(response.data[0]["lon"]);
-  //
-  //       setState(() {
-  //         _selectedLocation = LatLng(lat, lon);
-  //           staticMapUrl =
-  //           "https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=15&size=650x450&markers=$lat,$lon,red-pushpin";
-  //       });
-  //
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('Tọa độ: ($lat, $lon)')),
-  //       );
-  //     } else {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text('Không tìm thấy địa chỉ!')),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Lỗi: $e')),
-  //     );
-  //   } finally {
-  //     setState(() => _isLoading = false);
-  //   }
-  // }
-
-
   Future<void> _openItinerarySelector() async {
     final itinerary = await Navigator.push(
       context,
@@ -287,40 +245,15 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         controller: _contentController,
                         maxLines: null,
                         decoration: InputDecoration(
-                          hintText:
-                              'Share your moment to connect with others...',
+                          hintText: 'Share your moment to connect with others...',
                           border: InputBorder.none,
                         ),
                       ),
                       _buildImageWidgets(),
-                      // TextField(
-                      //   controller: _addressController,
-                      //   decoration: InputDecoration(
-                      //     labelText: "Nhập địa chỉ",
-                      //     suffixIcon: IconButton(
-                      //       icon: Icon(Icons.search),
-                      //       onPressed: () => _getCoordinates(_addressController.text),
-                      //     ),
-                      //   ),
-                      // ),
-                      // SizedBox(height: 20),
-                      // _isLoading
-                      //     ? CircularProgressIndicator()
-                      //     : _selectedLocation != null
-                      //     ? Text("Tọa độ: ${_selectedLocation!.latitude}, ${_selectedLocation!.longitude}")
-                      //     : Text("Nhập địa chỉ để lấy tọa độ"),
-                      // staticMapUrl != null
-                      //     ? Image.network(staticMapUrl!) // Hiển thị bản đồ
-                      //     : Text("Nhập địa chỉ để hiển thị bản đồ"),
-                      // Image.network(
-                      //   imageUrl,
-                      //   fit: BoxFit.cover,
-                      //   errorBuilder: (context, error, stackTrace) {
-                      //     print("🚨 Lỗi khi tải ảnh: $error");
-                      //     return Icon(Icons.error, size: 60, color: Colors.red);
-                      //   },
-                      // ),
-                      if (selectedItinerary != null) _buildTripCard(selectedItinerary!),
+                      if (selectedItinerary != null) ...[
+                        SizedBox(height: 16),
+                        _buildTripCard(selectedItinerary!),
+                      ],
                     ],
                   ),
                 ),
@@ -338,9 +271,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
               onPressed: _toggleFooter,
               backgroundColor: Theme.of(context).primaryColor,
               child: Icon(
-                _isExpanded
-                    ? Icons.keyboard_arrow_down
-                    : Icons.keyboard_arrow_up,
+                _isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
                 color: Colors.white,
               ),
             ),
@@ -420,8 +351,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.grey,
                                       foregroundColor: Colors.white,
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12),
+                                      padding: EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -431,17 +361,21 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: _isPublishEnabled
-                                        ? _handlePublish
-                                        : null,
-                                    child: Text('Public'),
+                                    onPressed: _isPublishEnabled && !_isPublishing ? _handlePublish : null,
+                                    child: _isPublishing
+                                        ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        )
+                                    )
+                                        : Text('Public'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: _isPublishEnabled
-                                          ? Colors.teal
-                                          : Colors.grey,
+                                      backgroundColor: _isPublishEnabled && !_isPublishing ? Colors.teal : Colors.grey,
                                       foregroundColor: Colors.white,
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12),
+                                      padding: EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -492,8 +426,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Please add some content or images.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please add some content or images.')));
       }
       return false; // Không publish thành công
     }
@@ -507,11 +440,26 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       return false; // Không publish thành công
     }
 
-    List<Map<String, dynamic>> imageList = _uploadedImageUrls
-        .map((url) => {
-              'content': url,
-            })
-        .toList();
+    List<Map<String, dynamic>> imageList = _uploadedImageUrls.map((url) => {
+      'content': url,
+    }).toList();
+
+    // Chuẩn bị dữ liệu để gửi lên server
+    Map<String, dynamic> postData = {
+      'content': content,
+      'images': imageList,
+    };
+
+    // Chỉ thêm itinerary vào nếu đã chọn
+    if (selectedItinerary != null) {
+      try {
+        Itinerary itinerary = Itinerary.fromJson(selectedItinerary!);
+        postData['itinerary'] = selectedItinerary;
+      } catch (e) {
+        print('Error parsing itinerary: $e');
+        // Tiếp tục mà không có itinerary
+      }
+    }
 
     try {
       final response = await http.post(
