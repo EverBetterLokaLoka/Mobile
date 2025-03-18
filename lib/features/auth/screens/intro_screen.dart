@@ -66,6 +66,7 @@ class IntroScreen extends StatelessWidget {
               ),
               const SizedBox(height: 80),
               ElevatedButton(
+                key: Key("get-start-button"),
                 onPressed: () {
                   Navigator.pushNamed(context, '/sign-up');
                 },

@@ -206,6 +206,48 @@ class _HomeTabState extends State<HomeTab> {
     });
   }
 
+  // Thêm hàm xử lý khi comment được cập nhật
+  void _handleCommentUpdated(Post post, Comment updatedComment) {
+    setState(() {
+      final postIndex = _posts.indexWhere((p) => p.id == post.id);
+      if (postIndex != -1) {
+        final commentIndex = _posts[postIndex].comments.indexWhere(
+                (c) => c.id == updatedComment.id
+        );
+
+        if (commentIndex != -1) {
+          // Tạo danh sách comments mới với comment đã được cập nhật
+          List<Comment> updatedComments = List.from(_posts[postIndex].comments);
+          updatedComments[commentIndex] = updatedComment;
+
+          // Cập nhật post với danh sách comments mới
+          _posts[postIndex] = _posts[postIndex].copyWith(
+            comments: updatedComments,
+          );
+        }
+      }
+    });
+  }
+
+  // Thêm hàm xử lý khi comment bị xóa
+  void _handleCommentDeleted(Post post, int commentId) {
+    setState(() {
+      final postIndex = _posts.indexWhere((p) => p.id == post.id);
+      if (postIndex != -1) {
+        // Tạo danh sách comments mới không bao gồm comment đã bị xóa
+        List<Comment> updatedComments = _posts[postIndex].comments
+            .where((c) => c.id != commentId)
+            .toList();
+
+        // Cập nhật post với danh sách comments mới và giảm số lượng comment
+        _posts[postIndex] = _posts[postIndex].copyWith(
+          comments: updatedComments,
+          commentCount: _posts[postIndex].commentCount - 1,
+        );
+      }
+    });
+  }
+
   void _handleEditPost(Post post) {
     Navigator.push(
       context,
@@ -441,10 +483,13 @@ class _HomeTabState extends State<HomeTab> {
                         builder: (context) => CommentScreen(
                           post: post,
                           onCommentAdded: (newComment) => _handleCommentAdded(post, newComment),
+                          // Thêm callbacks mới cho cập nhật và xóa comment
+                          onCommentUpdated: (updatedComment) => _handleCommentUpdated(post, updatedComment),
+                          onCommentDeleted: (commentId) => _handleCommentDeleted(post, commentId),
                         ),
                       ),
                     );
-                    _refreshPosts();
+                    // Không cần gọi _refreshPosts() nữa vì chúng ta đã cập nhật state trực tiếp
                   },
                   child: Row(
                     children: [
@@ -454,7 +499,6 @@ class _HomeTabState extends State<HomeTab> {
                     ],
                   ),
                 ),
-
               ],
             ),
             if (post.comments.isNotEmpty) _buildLatestComment(post.comments.last),

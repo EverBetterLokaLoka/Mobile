@@ -7,11 +7,15 @@ import 'package:lokaloka/features/profile/services/profile_services.dart';
 class CommentScreen extends StatefulWidget {
   final Post post;
   final Function(Comment) onCommentAdded;
+  final Function(Comment) onCommentUpdated; // Thêm callback cho cập nhật
+  final Function(int) onCommentDeleted; // Thêm callback cho xóa
 
   const CommentScreen({
     Key? key,
     required this.post,
     required this.onCommentAdded,
+    required this.onCommentUpdated,
+    required this.onCommentDeleted,
   }) : super(key: key);
 
   @override
@@ -31,6 +35,17 @@ class _CommentScreenState extends State<CommentScreen> {
     super.initState();
     _comments = List.from(widget.post.comments);
     _getCurrentUserProfile();
+  }
+
+  // Cập nhật comments khi widget.post.comments thay đổi
+  @override
+  void didUpdateWidget(CommentScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.post.comments != oldWidget.post.comments) {
+      setState(() {
+        _comments = List.from(widget.post.comments);
+      });
+    }
   }
 
   Future<void> _getCurrentUserProfile() async {
@@ -76,27 +91,36 @@ class _CommentScreenState extends State<CommentScreen> {
       } else {
         // Update the existing comment
         Comment updatedComment = await _profileService.updateComment(widget.post.id, editingComment!.id, _commentController.text);
+
+        Comment fullUpdatedComment = Comment(
+          id: updatedComment.id,
+          content: updatedComment.content,
+          postId: widget.post.id,
+          userId: userId,
+          userEmail: userEmail,
+          userName: userName,
+          createdAt: editingComment!.createdAt, // Giữ nguyên thời gian tạo
+          avatar: avatar,
+          destroyed: null,
+        );
+
         setState(() {
           int index = _comments.indexWhere((c) => c.id == editingComment!.id);
           if (index != -1) {
-            _comments[index] = Comment(
-              id: updatedComment.id,
-              content: updatedComment.content,
-              postId: widget.post.id,
-              userId: userId,
-              userEmail: userEmail,
-              userName: userName,
-              createdAt: updatedComment.createdAt,
-              avatar: avatar,
-              destroyed: null,
-            );
+            _comments[index] = fullUpdatedComment;
           }
         });
-        editingComment = null; // Clear the editing comment variable
+
+        // Thông báo cho màn hình cha về comment đã cập nhật
+        widget.onCommentUpdated(fullUpdatedComment);
+
+        editingComment = null;
       }
 
       _commentController.clear();
-      _isSending = false;
+      setState(() {
+        _isSending = false;
+      });
     } catch (error) {
       print('Error saving comment: $error');
       setState(() {
@@ -106,45 +130,72 @@ class _CommentScreenState extends State<CommentScreen> {
   }
 
   Future<void> _editComment(Comment comment) async {
-    _commentController.text = comment.content;
-    editingComment = comment; // Set the comment being edited
+    // Tạo một biến để lưu nội dung comment, thay vì sử dụng controller mới
+    String editedContent = comment.content;
+    bool isCommentValid = comment.content.isNotEmpty;
+
+    editingComment = comment;
 
     final bool? shouldUpdate = await showDialog<bool>(
       context: context,
+      barrierDismissible: false, // Ngăn người dùng đóng dialog bằng cách nhấn bên ngoài
       builder: (context) {
-        return AlertDialog(
-          title: Text('Edit Comment'),
-          content: TextField(
-            controller: _commentController,
-            decoration: InputDecoration(
-              hintText: 'Edit your comment...',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false);
-                editingComment = null; // Clear the editing comment variable on cancel
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-              child: Text('Save'),
-            ),
-          ],
+        return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: Text('Edit Comment'),
+                content: TextFormField(
+                  initialValue: comment.content, // Sử dụng initialValue thay vì controller
+                  decoration: InputDecoration(
+                    hintText: 'Edit your comment...',
+                  ),
+                  autofocus: true,
+                  maxLines: null,
+                  onChanged: (value) {
+                    // Cập nhật biến nội dung và trạng thái hợp lệ
+                    editedContent = value;
+                    setDialogState(() {
+                      isCommentValid = value.trim().isNotEmpty;
+                    });
+                  },
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(false);
+                    },
+                    child: Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: isCommentValid
+                        ? () {
+                      Navigator.of(context).pop(true);
+                    }
+                        : null,
+                    child: Text('Save'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: isCommentValid ? Theme.of(context).primaryColor : Colors.grey,
+                    ),
+                  ),
+                ],
+              );
+            }
         );
       },
     );
 
-    if (shouldUpdate == true) {
+    if (shouldUpdate == true && mounted) {
+      // Cập nhật nội dung comment vào controller chính
+      _commentController.text = editedContent;
       // Call _addOrUpdateComment to handle the update
       _addOrUpdateComment();
+    } else {
+      // Nếu hủy, xóa comment đang chỉnh sửa
+      setState(() {
+        editingComment = null;
+      });
     }
   }
-
   Future<void> _deleteComment(int commentId) async {
     final bool? shouldDelete = await showDialog<bool>(
       context: context,
@@ -176,6 +227,9 @@ class _CommentScreenState extends State<CommentScreen> {
         setState(() {
           _comments.removeWhere((c) => c.id == commentId);
         });
+
+        // Thông báo cho màn hình cha về comment đã xóa
+        widget.onCommentDeleted(commentId);
       } catch (error) {
         print('Error deleting comment: $error');
       }
@@ -305,7 +359,7 @@ class _CommentScreenState extends State<CommentScreen> {
             child: TextField(
               controller: _commentController,
               decoration: InputDecoration(
-                hintText: 'Add a comment...',
+                hintText: editingComment == null ? 'Add a comment...' : 'Edit comment...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -316,7 +370,7 @@ class _CommentScreenState extends State<CommentScreen> {
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _addOrUpdateComment(),
+              onSubmitted: (_) => _commentController.text.trim().isNotEmpty ? _addOrUpdateComment() : null,
             ),
           ),
           SizedBox(width: 8),
@@ -327,9 +381,26 @@ class _CommentScreenState extends State<CommentScreen> {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
               : IconButton(
-            icon: Icon(Icons.send, color: Theme.of(context).primaryColor),
-            onPressed: _addOrUpdateComment,
+            icon: Icon(
+              editingComment == null ? Icons.send : Icons.check,
+              color: _commentController.text.trim().isEmpty
+                  ? Colors.grey
+                  : Theme.of(context).primaryColor,
+            ),
+            onPressed: _commentController.text.trim().isEmpty
+                ? null
+                : _addOrUpdateComment,
           ),
+          if (editingComment != null)
+            IconButton(
+              icon: Icon(Icons.close, color: Colors.grey),
+              onPressed: () {
+                setState(() {
+                  editingComment = null;
+                  _commentController.clear();
+                });
+              },
+            ),
         ],
       ),
     );

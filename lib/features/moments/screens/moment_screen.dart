@@ -70,6 +70,49 @@ class _MomentsScreenState extends State<MomentsScreen> {
     });
   }
 
+  // Thêm hàm xử lý khi comment được cập nhật
+  void _handleCommentUpdated(Post post, Comment updatedComment) {
+    setState(() {
+      final postIndex = _posts.indexWhere((p) => p.id == post.id);
+      if (postIndex != -1) {
+        final commentIndex = _posts[postIndex].comments.indexWhere(
+                (c) => c.id == updatedComment.id
+        );
+
+        if (commentIndex != -1) {
+          // Tạo danh sách comments mới với comment đã được cập nhật
+          List<Comment> updatedComments = List.from(_posts[postIndex].comments);
+          updatedComments[commentIndex] = updatedComment;
+
+          // Cập nhật post với danh sách comments mới
+          _posts[postIndex] = _posts[postIndex].copyWith(
+            comments: updatedComments,
+          );
+        }
+      }
+    });
+  }
+
+
+  // Thêm hàm xử lý khi comment bị xóa
+  void _handleCommentDeleted(Post post, int commentId) {
+    setState(() {
+      final index = _posts.indexWhere((p) => p.id == post.id);
+      if (index != -1) {
+        // Tạo danh sách comments mới không bao gồm comment đã bị xóa
+        List<Comment> updatedComments = _posts[index].comments
+            .where((c) => c.id != commentId)
+            .toList();
+
+        // Cập nhật post với danh sách comments mới và giảm số lượng comment
+        _posts[index] = _posts[index].copyWith(
+          comments: updatedComments,
+          commentCount: _posts[index].commentCount - 1,
+        );
+      }
+    });
+  }
+
   void _handleLikeToggled(Post post) async {
     if (_currentUser == null) return;
 
@@ -179,6 +222,8 @@ class _MomentsScreenState extends State<MomentsScreen> {
               post: _posts[index],
               currentUserId: _currentUser?.id ?? 0,
               onCommentAdded: _handleCommentAdded,
+              onCommentUpdated: _handleCommentUpdated, // Thêm callback mới
+              onCommentDeleted: _handleCommentDeleted, // Thêm callback mới
               onLikeToggled: _handleLikeToggled,
             );
           },
@@ -192,12 +237,16 @@ class PostCard extends StatelessWidget {
   final Post post;
   final int currentUserId;
   final Function(Post, Comment) onCommentAdded;
+  final Function(Post, Comment) onCommentUpdated; // Thêm callback mới
+  final Function(Post, int) onCommentDeleted; // Thêm callback mới
   final Function(Post) onLikeToggled;
 
   const PostCard({
     required this.post,
     required this.currentUserId,
     required this.onCommentAdded,
+    required this.onCommentUpdated, // Thêm vào constructor
+    required this.onCommentDeleted, // Thêm vào constructor
     required this.onLikeToggled,
   });
 
@@ -377,6 +426,9 @@ class PostCard extends StatelessWidget {
                 builder: (context) => CommentScreen(
                   post: post,
                   onCommentAdded: (newComment) => onCommentAdded(post, newComment),
+                  // Thêm callbacks mới cho cập nhật và xóa comment
+                  onCommentUpdated: (updatedComment) => onCommentUpdated(post, updatedComment),
+                  onCommentDeleted: (commentId) => onCommentDeleted(post, commentId),
                 ),
               ),
             );
