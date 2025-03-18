@@ -175,7 +175,7 @@ class _AccountTabState extends State<AccountTab> {
   String? validatePhone(String? value) {
     if (value != null && value.isNotEmpty) {
       // Kiểm tra định dạng số điện thoại
-      if (!RegExp(r'^(0[0-9]{2}-[0-9]{7})$').hasMatch(value)) {
+      if (!RegExp(r'^(|\d{10})$').hasMatch(value)) {
         return 'Enter a valid phone number (format: 0xx-xxxxxxx)';
       }
     }

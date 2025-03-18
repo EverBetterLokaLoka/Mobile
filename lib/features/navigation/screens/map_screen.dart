@@ -178,7 +178,7 @@ class _MapScreenState extends State<MapScreen> {
                   controller: controller,
                   focusNode: focusNode,
                   decoration: InputDecoration(
-                    hintText: "Tìm kiếm địa điểm...",
+                    hintText: "Search for locations...",
                     fillColor: Colors.white,
                     filled: true,
                     prefixIcon: Icon(Icons.search),

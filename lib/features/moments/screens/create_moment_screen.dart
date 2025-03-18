@@ -39,6 +39,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   bool isLoading = true;
   Map<String, dynamic>? selectedItinerary;
   bool _isPublishEnabled = false;
+  bool _isPublishing = false; // Thêm biến để theo dõi trạng thái đăng bài
 
   @override
   void initState() {
@@ -72,10 +73,19 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   }
 
   void _handlePublish() {
+    if (_isPublishing) return; // Ngăn chặn nhiều lần nhấn nút publish
+
+    setState(() {
+      _isPublishing = true;
+    });
+
     _publishPost().then((success) {
       if (success) {
         Navigator.pop(context, true); // Trả về true nếu đã publish thành công
       }
+      setState(() {
+        _isPublishing = false;
+      });
     });
   }
 
@@ -87,11 +97,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     try {
       final pickedFiles = await _picker.pickMultiImage();
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
-        for (var pickedFile in pickedFiles) {
-          setState(() {
-            _selectedImages.add(File(pickedFile.path));
-          });
-        }
+        setState(() {
+          _selectedImages = pickedFiles.map((file) => File(file.path)).toList();
+        });
 
         String? token = await AuthService().getToken();
         if (token != null) {
@@ -163,9 +171,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       setState(() {
         selectedItinerary = itinerary;
       });
+      print(itinerary['id']);
     }
-    print(itinerary['id']);
-
   }
 
   @override
@@ -332,10 +339,19 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: _isPublishEnabled ? _handlePublish : null,
-                                    child: Text('Public'),
+                                    onPressed: _isPublishEnabled && !_isPublishing ? _handlePublish : null,
+                                    child: _isPublishing
+                                        ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        )
+                                    )
+                                        : Text('Public'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: _isPublishEnabled ? Colors.teal : Colors.grey,
+                                      backgroundColor: _isPublishEnabled && !_isPublishing ? Colors.teal : Colors.grey,
                                       foregroundColor: Colors.white,
                                       padding: EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
@@ -384,8 +400,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
   Future<bool> _publishPost() async {
     String content = _contentController.text;
-    Itinerary itinerary = Itinerary.fromJson(selectedItinerary!);
 
+    // Kiểm tra nếu không có nội dung và không có ảnh
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please add some content or images.')));
@@ -393,6 +409,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       return false; // Không publish thành công
     }
 
+    // Kiểm tra token
     String? token = await AuthService().getToken();
     if (token == null) {
       if (mounted) {
@@ -401,9 +418,27 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       return false; // Không publish thành công
     }
 
+    // Chuẩn bị danh sách ảnh
     List<Map<String, dynamic>> imageList = _uploadedImageUrls.map((url) => {
       'content': url,
     }).toList();
+
+    // Chuẩn bị dữ liệu để gửi lên server
+    Map<String, dynamic> postData = {
+      'content': content,
+      'images': imageList,
+    };
+
+    // Chỉ thêm itinerary vào nếu đã chọn
+    if (selectedItinerary != null) {
+      try {
+        Itinerary itinerary = Itinerary.fromJson(selectedItinerary!);
+        postData['itinerary'] = selectedItinerary;
+      } catch (e) {
+        print('Error parsing itinerary: $e');
+        // Tiếp tục mà không có itinerary
+      }
+    }
 
     try {
       final response = await http.post(
@@ -412,11 +447,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'content': content,
-          'itinerary': itinerary,
-          'images': imageList,  // Đảm bảo rằng 'images' là danh sách đối tượng
-        }),
+        body: jsonEncode(postData),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
