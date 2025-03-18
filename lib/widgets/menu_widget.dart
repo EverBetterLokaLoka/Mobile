@@ -82,7 +82,7 @@ class Menu extends StatelessWidget {
                   CircleAvatar(
                     backgroundImage: userGlobal?.avatar != null
                         ? NetworkImage(userGlobal!.avatar!)
-                        : AssetImage('assets/images/avt-default') as ImageProvider,
+                        : AssetImage('assets/images/avt-default.png') as ImageProvider,
                     radius: 22,
                   ),
                 ],

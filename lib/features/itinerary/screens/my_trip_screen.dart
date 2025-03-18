@@ -167,12 +167,12 @@ class _MyTripState extends State<MyTripScreen> {
 
   void _shareItinerary(Map<String, dynamic> trip) {
     final String shareText = 'Check out this itinerary: ${trip['title']}!';
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CreateMomentScreen(userName: userGlobal!.displayName, userLocation: userGlobal!.address!, userAvatar: userGlobal!.avatar!)
-      ),
-    );
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => CreateMomentScreen(userName: userGlobal!.displayName, userLocation: userGlobal!.address!, userAvatar: userGlobal!.avatar!)
+    //   ),
+    // );
     print("Sharing: $shareText");
   }
 

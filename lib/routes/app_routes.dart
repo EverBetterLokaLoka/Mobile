@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lokaloka/features/friend/screens/friends_screen.dart';
+import 'package:lokaloka/features/moments/screens/checkin_screen.dart';
 import 'package:lokaloka/features/moments/screens/moment_screen.dart';
 import 'package:lokaloka/features/notification/screens/notification_screen.dart';
 import 'package:lokaloka/features/profile/screens/profile_screen.dart';
@@ -53,6 +54,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => FriendsScreen());
       case '/notification':
         return MaterialPageRoute(builder: (_) => NotificationScreen());
+      case '/checkin':
+        return MaterialPageRoute(builder: (_) => CheckinScreen());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

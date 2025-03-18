@@ -61,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _initializeLocation() async {
     await NavigationApi().getCurrentLocation();
     _checkPermissions();
-    setState(() {});
   }
 
   Future<void> _checkPermissions() async {
@@ -207,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Hi, ${user?.displayName ?? "User"}",
+                    Text("Hi, ${userGlobal?.displayName ?? "User"}",
                         style: GoogleFonts.poppins(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -238,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: CircleAvatar(
                     backgroundImage: user?.avatar != null
                         ? NetworkImage(user!.avatar!)
-                        : AssetImage('assets/images/avt-default') as ImageProvider,
+                        : AssetImage('assets/images/avt-default.png') as ImageProvider,
                     radius: 22,
                   ),
                 )

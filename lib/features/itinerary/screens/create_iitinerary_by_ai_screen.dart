@@ -53,8 +53,7 @@ class _CreateByAiState extends State<CreateByAi> {
     const int maxRetries = 3;
 
     try {
-      final String dateInfo =
-      (widget.startDate.isNotEmpty && widget.endDate.isNotEmpty)
+      final String dateInfo = (widget.startDate.isNotEmpty && widget.endDate.isNotEmpty)
           ? "from ${widget.startDate} to ${widget.endDate} "
           : "";
 
@@ -76,22 +75,37 @@ class _CreateByAiState extends State<CreateByAi> {
         'prompt': prompt,
       };
 
-      final response = await _apiService.request(
-        path: '/itineraries/generate',
-        method: 'POST',
-        typeUrl: 'baseUrl',
-        currentPath: '',
-        data: requestData,
-      );
+      late final response;
 
-      if (response.body == null || response.body.isEmpty) {
-        throw Exception("API response is empty");
+      try {
+        response = await _apiService.request(
+          path: '/itineraries/generate',
+          method: 'POST',
+          typeUrl: 'baseUrl',
+          currentPath: '',
+          data: requestData,
+        );
+
+        if (response.body == null || response.body.isEmpty) {
+          throw Exception("API response is empty");
+        }
+      } catch (networkError) {
+        print("Lỗi mạng hoặc server: $networkError");
+
+        if (retryCount < maxRetries) {
+          print("Thử lại lần ${retryCount + 1}...");
+          await Future.delayed(Duration(seconds: 1));
+          return _sendDataToBackend(retryCount: retryCount + 1);
+        }
+
+        _showResponseDialog('Error', 'Network error: $networkError');
+        return;
       }
 
       final itineraryResponse = parseItineraryResponse(response.body);
       String imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
 
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => ItineraryCreated(data: itineraryResponse, image: imageItinerary),
@@ -99,14 +113,7 @@ class _CreateByAiState extends State<CreateByAi> {
         ),
       );
     } catch (e) {
-      print("Lỗi khi xử lý JSON: $e");
-
-      if (e.toString().contains('500') && retryCount < maxRetries) {
-        print("Thử lại lần ${retryCount + 1}...");
-        await Future.delayed(Duration(seconds: 1));
-        return _sendDataToBackend(retryCount: retryCount + 1);
-      }
-
+      print("Lỗi không xác định: $e");
       _showResponseDialog('Error', 'Failed to plan trip: $e');
     }
   }

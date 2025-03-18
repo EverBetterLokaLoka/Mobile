@@ -45,10 +45,14 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   Map<String, dynamic>? selectedItinerary;
   bool _isPublishEnabled = false;
   List<LatLng> latLngLocations = [];
-  String staticMapUrl = '';
+  String? staticMapUrl;
   List<String> locations = [];
   static const String graphHopperApiKey =
       "087f9f85-d3ed-4565-94da-bbe55971cf88";
+
+  final TextEditingController _addressController = TextEditingController();
+  LatLng? _selectedLocation;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -173,26 +177,53 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   }
 
   String imageUrl = '';
+  // Future<void> _getCoordinates(String address) async {
+  //   setState(() {
+  //             // _selectedLocation = LatLng(lat, lon);
+  //             //   staticMapUrl =
+  //               // "https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=15&size=650x450&markers=$lat,$lon,red-pushpin";
+  //           });
+  // }
 
-  Future<List<Map<String, dynamic>>> getCoordinates(List<String> locations) async {
-    List<Map<String, dynamic>> coordinates = [];
+  // Future<void> _getCoordinates(String address) async {
+  //   setState(() => _isLoading = true);
+  //   String url = "https://nominatim.openstreetmap.org/search?q=$address&format=json";
+  //
+  //   try {
+  //     final response = await Dio().get(
+  //       url,
+  //       options: Options(headers: {
+  //         "User-Agent": "lokaloka/2.0 (lokaloka@gmail.com)" // Thay bằng thông tin của bạn
+  //       }),
+  //     );
+  //
+  //     if (response.statusCode == 200 && response.data.isNotEmpty) {
+  //       double lat = double.parse(response.data[0]["lat"]);
+  //       double lon = double.parse(response.data[0]["lon"]);
+  //
+  //       setState(() {
+  //         _selectedLocation = LatLng(lat, lon);
+  //           staticMapUrl =
+  //           "https://staticmap.openstreetmap.de/staticmap.php?center=$lat,$lon&zoom=15&size=650x450&markers=$lat,$lon,red-pushpin";
+  //       });
+  //
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Tọa độ: ($lat, $lon)')),
+  //       );
+  //     } else {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Không tìm thấy địa chỉ!')),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Lỗi: $e')),
+  //     );
+  //   } finally {
+  //     setState(() => _isLoading = false);
+  //   }
+  // }
 
-    for (String location in locations) {
-      String url = "https://nominatim.openstreetmap.org/search?q=$location&format=json";
-
-      try {
-        final response = await Dio().get(url);
-        if (response.statusCode == 200 && response.data.isNotEmpty) {
-          var lat = response.data[0]["lat"];
-          var lon = response.data[0]["lon"];
-          coordinates.add({"lat": lat, "lon": lon});
-        }
-      } catch (e) {
-        print("❌ Lỗi khi lấy tọa độ cho $location: $e");
-      }
-    }
-    return coordinates;
-  }
 
   Future<void> _openItinerarySelector() async {
     final itinerary = await Navigator.push(
@@ -201,55 +232,10 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     );
 
     if (itinerary != null) {
-      List<String> locationNames = [];
-
-      if (itinerary.containsKey("locations") &&
-          itinerary["locations"] is List) {
-        locationNames = (itinerary["locations"] as List)
-            .map((location) => location["name"].toString())
-            .toList();
-      }
-
-      final coordinates = await getCoordinates(locationNames);
-
-      String? address = itinerary['address'];
-      print("📌 Địa chỉ: $address");
-      print("📌 Danh sách địa điểm: $locationNames");
-
-      Future<String> getRouteImageUrl(List<Map<String, dynamic>> coordinates) async {
-        if (coordinates.length < 2) {
-          print("❌ Cần ít nhất 2 địa điểm để tạo tuyến đường.");
-          return "";
-        }
-
-        String points = coordinates.map((c) => "${c['lon']},${c['lat']}").join(";");
-        String osrmUrl = "http://router.project-osrm.org/route/v1/driving/$points?overview=full&geometries=geojson";
-
-        try {
-          final response = await Dio().get(osrmUrl);
-          if (response.statusCode == 200) {
-            var route = response.data["routes"][0]["geometry"]["coordinates"];
-            String path = route.map((p) => "${p[1]},${p[0]}").join("|");
-
-            // Tạo URL ảnh bản đồ với tuyến đường
-            String imageUrl =
-                "https://staticmap.openstreetmap.de/staticmap.php?center=${coordinates[0]['lat']},${coordinates[0]['lon']}&zoom=12&size=800x600&path=$path";
-
-            print("📍 URL ảnh: $imageUrl");
-            return imageUrl;
-          }
-        } catch (e) {
-          print("❌ Lỗi khi lấy tuyến đường: $e");
-        }
-        return "";
-      }
-
-      imageUrl = await getRouteImageUrl(coordinates);
-
       setState(() {
-        staticMapUrl = imageUrl;
         selectedItinerary = itinerary;
       });
+      print(itinerary['id']);
     }
   }
 
@@ -307,6 +293,25 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         ),
                       ),
                       _buildImageWidgets(),
+                      // TextField(
+                      //   controller: _addressController,
+                      //   decoration: InputDecoration(
+                      //     labelText: "Nhập địa chỉ",
+                      //     suffixIcon: IconButton(
+                      //       icon: Icon(Icons.search),
+                      //       onPressed: () => _getCoordinates(_addressController.text),
+                      //     ),
+                      //   ),
+                      // ),
+                      // SizedBox(height: 20),
+                      // _isLoading
+                      //     ? CircularProgressIndicator()
+                      //     : _selectedLocation != null
+                      //     ? Text("Tọa độ: ${_selectedLocation!.latitude}, ${_selectedLocation!.longitude}")
+                      //     : Text("Nhập địa chỉ để lấy tọa độ"),
+                      // staticMapUrl != null
+                      //     ? Image.network(staticMapUrl!) // Hiển thị bản đồ
+                      //     : Text("Nhập địa chỉ để hiển thị bản đồ"),
                       // Image.network(
                       //   imageUrl,
                       //   fit: BoxFit.cover,
@@ -315,7 +320,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                       //     return Icon(Icons.error, size: 60, color: Colors.red);
                       //   },
                       // ),
-                      _buildTripCard(selectedItinerary!),
+                      if (selectedItinerary != null) _buildTripCard(selectedItinerary!),
                     ],
                   ),
                 ),
@@ -524,24 +529,19 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Post published successfully!')));
-          print("success create post");
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post published successfully!')));
         }
         return true; // Publish thành công
       } else {
         final responseData = response.body;
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(
-                  'Failed to publish post: ${response.statusCode} - $responseData')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to publish post: ${response.statusCode} - $responseData')));
         }
         return false; // Không publish thành công
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
       return false; // Không publish thành công
     }
@@ -581,9 +581,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     );
   }
 
-  Widget _buildTripCard(Map<String, dynamic> trip, {String? imageItinerary}) {
+  Widget _buildTripCard(Map<String, dynamic> trip) {
     return Padding(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(10),
       child: Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         elevation: 3,
@@ -594,9 +594,16 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: imageItinerary != null && imageItinerary.isNotEmpty
-                    ? Image.network(imageItinerary,
-                    width: 80, height: 80, fit: BoxFit.cover)
+                child: trip['locations'] != null && trip['locations'].isNotEmpty
+                    ? Image.network(
+                  trip['locations'].firstWhere(
+                        (location) => location['image'] != null && location['image'].isNotEmpty,
+                    orElse: () => {'image': ''},
+                  )['image'],
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                )
                     : Container(
                   width: 80,
                   height: 80,
@@ -621,7 +628,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         Icon(Icons.calendar_today,
                             size: 16, color: Colors.grey),
                         SizedBox(width: 6),
-                        Text('${trip['init_date']} days',
+                        Text('2 days 1 night',
                             style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),
@@ -630,7 +637,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                       children: [
                         Icon(Icons.attach_money, size: 16, color: Colors.grey),
                         SizedBox(width: 6),
-                        Text(CurrencyFormatter.formatVnd(trip['price']),
+                        Text(trip['price']?.toString() ?? 'N/A',
                             style: TextStyle(color: Colors.grey, fontSize: 12)),
                       ],
                     ),

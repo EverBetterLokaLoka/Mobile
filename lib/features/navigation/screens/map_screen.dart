@@ -132,7 +132,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Travel Itinerary'),
+        title: const Text('Map'),
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -169,7 +169,7 @@ class _MapScreenState extends State<MapScreen> {
 
           // Thanh tìm kiếm
           Positioned(
-            top: 40,
+            top: 10,
             left: 20,
             right: 20,
             child: TypeAheadField<String>(
@@ -178,7 +178,7 @@ class _MapScreenState extends State<MapScreen> {
                   controller: controller,
                   focusNode: focusNode,
                   decoration: InputDecoration(
-                    hintText: "Tìm kiếm địa điểm...",
+                    hintText: "Search location...",
                     fillColor: Colors.white,
                     filled: true,
                     prefixIcon: Icon(Icons.search),
@@ -205,11 +205,11 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _captureImage,
-        child: const Icon(Icons.camera_alt),
-        backgroundColor: Colors.orange,
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: _captureImage,
+      //   child: const Icon(Icons.camera_alt),
+      //   backgroundColor: Colors.orange,
+      // ),
     );
   }
 }
