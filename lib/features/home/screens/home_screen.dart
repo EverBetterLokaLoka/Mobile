@@ -30,6 +30,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AuthService().checkTokenAndProceed(context);
+      if (user?.avatar != null) {
+        precacheImage(NetworkImage(user!.avatar!), context);
+      }
     });
     _fetchUserProfile();
     _initializeLocation();
@@ -58,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _initializeLocation() async {
     await NavigationApi().getCurrentLocation();
     _checkPermissions();
-    setState(() {});
   }
 
   Future<void> _checkPermissions() async {
@@ -204,24 +206,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Hi, ${user?.displayName ?? "User"}",
+                    Text("Hi, ${userGlobal?.displayName ?? "User"}",
                         style: GoogleFonts.poppins(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.black)),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, color: Colors.black, size: 16),
-                        SizedBox(width: 5),
-                        Text(
-                          "${user?.address?.isNotEmpty == true ? user!.address : cityName}, Việt Nam",
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            color: Colors.black,
+                    Visibility(
+                      visible: user?.address?.isNotEmpty == true || cityName.isNotEmpty,
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, color: Colors.black, size: 16),
+                          SizedBox(width: 5),
+                          Text(
+                            "${user?.address?.isNotEmpty == true ? user!.address : cityName}, Việt Nam",
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    )
                   ],
                 ),
                 Spacer(),
@@ -232,10 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: CircleAvatar(
                     backgroundImage: user?.avatar != null
                         ? NetworkImage(user!.avatar!)
-                        : AssetImage(user?.gender == 'male'
-                                ? 'assets/images/default-avt-female.png'
-                                : 'assets/images/default-avt-male.png')
-                            as ImageProvider,
+                        : AssetImage('assets/images/avt-default.png') as ImageProvider,
                     radius: 22,
                   ),
                 )
@@ -417,6 +419,15 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      width: 80,
+      height: 80,
+      color: Colors.grey[300],
+      child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
     );
   }
 }

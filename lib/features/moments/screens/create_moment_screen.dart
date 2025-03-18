@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lokaloka/core/utils/apis.dart';
 import 'package:http/http.dart' as http;
@@ -8,7 +10,9 @@ import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
 import 'package:lokaloka/features/moments/screens/select_itinerary_screen.dart';
 
+import '../../../core/utils/transfer_money.dart';
 import '../../itinerary/services/itinerary_api.dart';
+import '../../weather/services/LocationService.dart';
 
 class CreateMomentScreen extends StatefulWidget {
   final String userName;
@@ -28,7 +32,8 @@ class CreateMomentScreen extends StatefulWidget {
 
 class _CreateMomentScreenState extends State<CreateMomentScreen> {
   final TextEditingController _contentController = TextEditingController();
-  final DraggableScrollableController _dragController = DraggableScrollableController();
+  final DraggableScrollableController _dragController =
+      DraggableScrollableController();
   final ImagePicker _picker = ImagePicker();
 
   late String uploadUrl;
@@ -39,6 +44,15 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   bool isLoading = true;
   Map<String, dynamic>? selectedItinerary;
   bool _isPublishEnabled = false;
+  List<LatLng> latLngLocations = [];
+  String? staticMapUrl;
+  List<String> locations = [];
+  static const String graphHopperApiKey =
+      "087f9f85-d3ed-4565-94da-bbe55971cf88";
+
+  final TextEditingController _addressController = TextEditingController();
+  LatLng? _selectedLocation;
+  bool _isLoading = false;
   bool _isPublishing = false; // Thêm biến để theo dõi trạng thái đăng bài
 
   @override
@@ -107,11 +121,13 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
             await _uploadImage(token, image);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Token is expired or not found.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Token is expired or not found.')));
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error picking images: $e')));
     } finally {
       _isPickingImage = false;
     }
@@ -133,12 +149,18 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           _uploadedImageUrls.add(jsonResponse['data']);
           _checkPublishButtonStatus();
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Image uploaded successfully!')));
       } else {
         final responseData = await response.stream.bytesToString();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: ${response.statusCode} - $responseData')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text('Upload failed: ${response.statusCode} - $responseData')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -400,8 +422,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
   Future<bool> _publishPost() async {
     String content = _contentController.text;
+    Itinerary itinerary = Itinerary.fromJson(selectedItinerary!);
 
-    // Kiểm tra nếu không có nội dung và không có ảnh
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please add some content or images.')));
@@ -409,16 +431,15 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       return false; // Không publish thành công
     }
 
-    // Kiểm tra token
     String? token = await AuthService().getToken();
     if (token == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Token is expired or not found.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Token is expired or not found.')));
       }
       return false; // Không publish thành công
     }
 
-    // Chuẩn bị danh sách ảnh
     List<Map<String, dynamic>> imageList = _uploadedImageUrls.map((url) => {
       'content': url,
     }).toList();
@@ -447,12 +468,16 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(postData),
+        body: jsonEncode({
+          'content': content,
+          'itinerary': itinerary,
+          'images': imageList, // Đảm bảo rằng 'images' là danh sách đối tượng
+        }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          print("success create post");
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post published successfully!')));
         }
         return true; // Publish thành công
       } else {

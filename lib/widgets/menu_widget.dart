@@ -80,13 +80,10 @@ class Menu extends StatelessWidget {
                         fontWeight: FontWeight.bold),
                   ),
                   CircleAvatar(
-                    radius: 24,
                     backgroundImage: userGlobal?.avatar != null
                         ? NetworkImage(userGlobal!.avatar!)
-                        : AssetImage(userGlobal?.gender == 'male'
-                                ? 'assets/images/default-avt-female.png'
-                                : 'assets/images/default-avt-male.png')
-                            as ImageProvider,
+                        : AssetImage('assets/images/avt-default.png') as ImageProvider,
+                    radius: 22,
                   ),
                 ],
               ),

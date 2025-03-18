@@ -4,9 +4,11 @@ import 'package:lokaloka/core/styles/colors.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
 import 'package:lokaloka/features/itinerary/screens/detail_itinerary_screen.dart';
 import '../../../core/utils/apis.dart';
+import '../../../core/utils/transfer_money.dart';
 import '../../../globals.dart';
 import '../../../widgets/app_bar_widget.dart';
 import '../../../widgets/notice_widget.dart';
+import '../../moments/screens/create_moment_screen.dart';
 import '../../navigation/screens/map_navigation_screen.dart';
 import '../../weather/services/LocationService.dart';
 import '../services/itinerary_api.dart';
@@ -40,6 +42,7 @@ class _MyTripState extends State<MyTripScreen> {
 
     if (GoItinerary.start_date == null) {
       print("❌ Chưa có ngày bắt đầu.");
+
       bool? updateStatus =
           await ItineraryApi().goItineraryUpdate(id, itinerary);
       //get by id itinerary to go
@@ -51,6 +54,7 @@ class _MyTripState extends State<MyTripScreen> {
       bool? update = await ItineraryApi().updateItinerary(id, itinerary);
 
       if (!update!) {
+        setState(() {});
         return;
       }
     }
@@ -155,7 +159,6 @@ class _MyTripState extends State<MyTripScreen> {
       filteredItineraries = allItineraries
           .where((trip) => trip['status'] == selectedTab)
           .toList();
-
       // final itineraryResponse = parseItineraryResponse(filteredItineraries);
       // //Fetch images for location
       // String? imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
@@ -164,6 +167,12 @@ class _MyTripState extends State<MyTripScreen> {
 
   void _shareItinerary(Map<String, dynamic> trip) {
     final String shareText = 'Check out this itinerary: ${trip['title']}!';
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(
+    //     builder: (context) => CreateMomentScreen(userName: userGlobal!.displayName, userLocation: userGlobal!.address!, userAvatar: userGlobal!.avatar!)
+    //   ),
+    // );
     print("Sharing: $shareText");
   }
 
@@ -314,146 +323,155 @@ class _MyTripState extends State<MyTripScreen> {
   Widget _buildTripCard(Map<String, dynamic> trip, {String? imageItinerary}) {
     return Padding(
       padding: const EdgeInsets.all(15),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        elevation: 3,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: imageItinerary != null && imageItinerary.isNotEmpty
-                    ? Image.network(imageItinerary,
-                        width: 80, height: 80, fit: BoxFit.cover)
-                    : Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.grey[300], // Placeholder
-                        child: Icon(Icons.image, color: Colors.grey),
-                      ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      trip['title'] ?? 'Unknown Title',
-                      style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today,
-                            size: 16, color: Colors.grey),
-                        SizedBox(width: 6),
-                        Text('2 days 1 night',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.attach_money, size: 16, color: Colors.grey),
-                        SizedBox(width: 6),
-                        Text(trip['price']?.toString() ?? 'N/A',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.place, size: 16, color: Colors.grey),
-                        SizedBox(width: 6),
-                        Text('${trip['locations']?.length ?? 0} Destinations',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                  ],
+      child: InkWell(
+        onTap: () async {
+          Itinerary itinerary = Itinerary.fromJson(trip);
+          await splitLocation(itinerary.id, itinerary);
+        },
+        borderRadius: BorderRadius.circular(15), // Hiệu ứng nhấn
+        child: Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          elevation: 3,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: imageItinerary != null && imageItinerary.isNotEmpty
+                      ? Image.network(imageItinerary,
+                      width: 80, height: 80, fit: BoxFit.cover)
+                      : Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey[300], // Placeholder
+                    child: Icon(Icons.image, color: Colors.grey),
+                  ),
                 ),
-              ),
-              SizedBox(
-                height: 85,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'share') {
-                          _shareItinerary(trip);
-                        } else if (value == 'view') {
-                          Itinerary itinerary = Itinerary.fromJson(trip);
-                          getById(itinerary.id!);
-                        } else if (value == 'delete') {
-                          _deleteItinerary(trip);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'share',
-                          child: Row(
-                            children: [
-                              Icon(Icons.share, color: Colors.black),
-                              SizedBox(width: 10),
-                              Text('Share'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'view',
-                          child: Row(
-                            children: [
-                              Icon(Icons.remove_red_eye,
-                                  color: AppColors.primaryColor),
-                              SizedBox(width: 10),
-                              Text('View'),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, color: Colors.red),
-                              SizedBox(width: 10),
-                              Text('Delete',
-                                  style: TextStyle(color: Colors.red)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      child: ElevatedButton(
-                        onPressed: null,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: Size(30, 20),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: Icon(Icons.more_vert, color: Colors.black),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        trip['title'] ?? 'Unknown Title',
+                        style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        Itinerary itinerary = Itinerary.fromJson(trip);
-                        await splitLocation(itinerary.id, itinerary);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(35, 23),
-                        backgroundColor: AppColors.primaryColor,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today,
+                              size: 16, color: Colors.grey),
+                          SizedBox(width: 6),
+                          Text('${trip['init_date']} days',
+                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
                       ),
-                      child: Text('GO', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.attach_money, size: 16, color: Colors.grey),
+                          SizedBox(width: 6),
+                          Text(CurrencyFormatter.formatVnd(trip['price']),
+                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.place, size: 16, color: Colors.grey),
+                          SizedBox(width: 6),
+                          Text('${trip['locations']?.length ?? 0} Destinations',
+                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(
+                  height: 85,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'share') {
+                            _shareItinerary(trip);
+                          } else if (value == 'view') {
+                            Itinerary itinerary = Itinerary.fromJson(trip);
+                            getById(itinerary.id!);
+                          } else if (value == 'delete') {
+                            _deleteItinerary(trip);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'share',
+                            child: Row(
+                              children: [
+                                Icon(Icons.share, color: Colors.black),
+                                SizedBox(width: 10),
+                                Text('Share'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'view',
+                            child: Row(
+                              children: [
+                                Icon(Icons.remove_red_eye,
+                                    color: AppColors.primaryColor),
+                                SizedBox(width: 10),
+                                Text('View'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 10),
+                                Text('Delete',
+                                    style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                        child: ElevatedButton(
+                          onPressed: null,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: Size(30, 20),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: Icon(Icons.more_vert, color: Colors.black),
+                        ),
+                      ),
+                      if (selectedTab != 2)
+                        ElevatedButton(
+                          onPressed: () async {
+                            Itinerary itinerary = Itinerary.fromJson(trip);
+                            await splitLocation(itinerary.id, itinerary);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            minimumSize: Size(35, 23),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child:
+                          Text("Go", style: TextStyle(color: Colors.white)),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

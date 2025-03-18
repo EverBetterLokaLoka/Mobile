@@ -97,7 +97,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
           TypeAheadField<Map<String, String>>(
             suggestionsCallback: (search) async {
-              return _filterLocations(search);
+              var results = _filterLocations(search);
+              print("Suggestions: $results");
+              return results;
             },
             builder: (context, controller, focusNode) {
               return TextFormField(
@@ -300,25 +302,25 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ],
           ),
         ),
-        Positioned(
-          bottom: 10,
-          left: 20,
-          right: 20,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _weatherButton("Today",
-                  isActive: selectedForecast == 0,
-                  onTap: () => changeForecast(0)),
-              _weatherButton("Tomorrow",
-                  isActive: selectedForecast == 1,
-                  onTap: () => changeForecast(1)),
-              _weatherButton("5 day",
-                  isActive: selectedForecast == 2,
-                  onTap: () => changeForecast(2)),
-            ],
-          ),
-        ),
+        // Positioned(
+        //   bottom: 10,
+        //   left: 20,
+        //   right: 20,
+        //   child: Row(
+        //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        //     children: [
+        //       _weatherButton("Today",
+        //           isActive: selectedForecast == 0,
+        //           onTap: () => changeForecast(0)),
+        //       _weatherButton("Tomorrow",
+        //           isActive: selectedForecast == 1,
+        //           onTap: () => changeForecast(1)),
+        //       _weatherButton("5 day",
+        //           isActive: selectedForecast == 2,
+        //           onTap: () => changeForecast(2)),
+        //     ],
+        //   ),
+        // ),
       ],
     );
   }

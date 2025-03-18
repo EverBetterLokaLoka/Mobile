@@ -220,10 +220,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             if (value == null || value.isEmpty) {
               return "Please enter your full name";
             }
-            if (value.contains(" ")) {
+            if (value.contains(" ") && value.isEmpty) {
               return "Please enter your full name.";
             }
-            if (!RegExp(r'^[a-zA-ZÀ-ỹ]+$').hasMatch(value)) {
+            if (!RegExp(r'^[a-zA-ZÀ-ỹ]').hasMatch(value)) {
               return "Only letters are allowed.";
             }
             return null;

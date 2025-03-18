@@ -1,9 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:lokaloka/globals.dart';
 
 import '../../../core/utils/apis.dart';
+import '../../auth/screens/login_screen.dart';
+import '../../auth/services/auth_services.dart';
 import '../models/Itinerary.dart';
 
 class ItineraryApi {
@@ -35,7 +38,14 @@ class ItineraryApi {
     return [];
   }
 
-  Future<String?> saveItinerary(Itinerary itinerary) async {
+  Future<String?> saveItinerary(context, Itinerary itinerary) async {
+    String? token = await AuthService().getToken();
+    if (token == null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Login()),
+      );
+    }
     try {
       final Map<String, dynamic> body = {
         "title": itinerary.title,
@@ -223,6 +233,7 @@ class ItineraryApi {
         "price": itinerary.price,
         "address": cityTrip,
         "init_date": travelDays,
+        "status": 1,
         "start_date": itinerary.start_date?.toUtc().toIso8601String(),
         "updated_at": DateTime.now().toUtc().toIso8601String(),
         "locations": itinerary.locations.map((location) {

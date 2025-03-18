@@ -3,9 +3,13 @@ import 'package:intl/intl.dart';
 class CurrencyFormatter {
   static final NumberFormat _formatter = NumberFormat("#,###", "vi_VN");
 
-  static String format(String value) {
-    String text = value.replaceAll(RegExp(r'[^0-9]'), '');
-    if (text.isEmpty) return "0 VND";
-    return "${_formatter.format(int.parse(text))} VND";
+  static String formatVnd(dynamic value) {
+    if (value == null) return "0 VND";
+
+    int intValue = (value is double && value == value.toInt())
+        ? value.toInt()
+        : int.tryParse(value.toString()) ?? 0;
+
+    return "${_formatter.format(intValue)} VND";
   }
 }

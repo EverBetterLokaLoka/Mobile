@@ -22,9 +22,13 @@ class _SelectItineraryScreenState extends State<SelectItineraryScreen> {
     setState(() => isLoading = true);
 
     final fetchedItineraries = await ItineraryApi().fetchItineraries();
-    print(fetchedItineraries.first);
+
+    final filteredItineraries = fetchedItineraries.where((itinerary) {
+      return itinerary['status'] == 2;
+    }).toList();
+
     setState(() {
-      itineraries = fetchedItineraries;
+      itineraries = filteredItineraries;
       isLoading = false;
     });
   }
