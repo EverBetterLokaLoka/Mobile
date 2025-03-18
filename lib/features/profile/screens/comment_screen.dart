@@ -29,12 +29,25 @@ class _CommentScreenState extends State<CommentScreen> {
   bool _isSending = false;
   int currentUserId = 0; // User ID of the current user
   Comment? editingComment; // Hold the comment being edited
+  bool _hasCommentText = false; // Thêm biến để theo dõi trạng thái nội dung
 
   @override
   void initState() {
     super.initState();
     _comments = List.from(widget.post.comments);
     _getCurrentUserProfile();
+
+    // Thêm listener để theo dõi thay đổi nội dung
+    _commentController.addListener(_updateCommentStatus);
+  }
+
+  void _updateCommentStatus() {
+    final hasText = _commentController.text.trim().isNotEmpty;
+    if (hasText != _hasCommentText) {
+      setState(() {
+        _hasCommentText = hasText;
+      });
+    }
   }
 
   // Cập nhật comments khi widget.post.comments thay đổi
@@ -196,6 +209,7 @@ class _CommentScreenState extends State<CommentScreen> {
       });
     }
   }
+
   Future<void> _deleteComment(int commentId) async {
     final bool? shouldDelete = await showDialog<bool>(
       context: context,
@@ -330,6 +344,7 @@ class _CommentScreenState extends State<CommentScreen> {
 
   @override
   void dispose() {
+    _commentController.removeListener(_updateCommentStatus); // Xóa listener khi dispose
     _commentController.dispose();
     super.dispose();
   }
@@ -370,7 +385,7 @@ class _CommentScreenState extends State<CommentScreen> {
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _commentController.text.trim().isNotEmpty ? _addOrUpdateComment() : null,
+              onSubmitted: (_) => _hasCommentText ? _addOrUpdateComment() : null,
             ),
           ),
           SizedBox(width: 8),
@@ -383,13 +398,13 @@ class _CommentScreenState extends State<CommentScreen> {
               : IconButton(
             icon: Icon(
               editingComment == null ? Icons.send : Icons.check,
-              color: _commentController.text.trim().isEmpty
-                  ? Colors.grey
-                  : Theme.of(context).primaryColor,
+              color: _hasCommentText
+                  ? Theme.of(context).primaryColor
+                  : Colors.grey,
             ),
-            onPressed: _commentController.text.trim().isEmpty
-                ? null
-                : _addOrUpdateComment,
+            onPressed: _hasCommentText
+                ? _addOrUpdateComment
+                : null,
           ),
           if (editingComment != null)
             IconButton(

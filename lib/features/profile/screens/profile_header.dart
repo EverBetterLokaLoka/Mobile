@@ -85,11 +85,9 @@ class _ProfileHeaderState extends State<ProfileHeader> {
         } else {
           throw Exception('"data" field not found in the response');
         }
-      } else {
-        throw Exception('Upload failed with status: ${response.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      print("Error: "+e.toString());
     }
   }
 
