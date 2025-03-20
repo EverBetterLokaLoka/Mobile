@@ -43,8 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
     user = await _profileService.getUserProfile();
 
     if (user != null) {
-      trustPhone = user?.emergency_numbers;
-      userGlobal = user;
+      setState(() {
+        trustPhone = user?.emergency_numbers;
+        userGlobal = user;
+      });
     }
   }
 

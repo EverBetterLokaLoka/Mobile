@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/apis.dart';
 import '../../../core/utils/transfer_money.dart';
 import '../../../globals.dart';
-import '../widgets/itinerary-app_bar.dart';
 import '../../../core/styles/colors.dart';
 import 'created_2itinerary_screen.dart';
 import '../models/Itinerary.dart';
@@ -139,9 +138,9 @@ class _CreateByAiState extends State<CreateByAi> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ItineraryAppBar(
-        titleText: 'Create Itinerary',
-        actions: [],
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text('Create Itinerary'),
       ),
       body: Stack(
         children: [

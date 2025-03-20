@@ -51,11 +51,10 @@ class ItineraryCreated extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print(data.itinerary.length);
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Itinerary Created'),
+        title: Text('Choose your itinerary'),
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

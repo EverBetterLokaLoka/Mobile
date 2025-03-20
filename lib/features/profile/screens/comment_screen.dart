@@ -65,7 +65,6 @@ class _CommentScreenState extends State<CommentScreen> {
     });
   }
 
-  // Tách riêng hàm thêm comment mới
   Future<void> _addNewComment() async {
     if (_commentController.text.isEmpty) return;
 
@@ -80,10 +79,9 @@ class _CommentScreenState extends State<CommentScreen> {
       final String userName = userProfile?.full_name ?? 'Unknown User';
       final String avatar = userProfile?.avatar ?? '';
 
-      // Gọi API để thêm comment mới
-      Comment newComment = await _profileService.addComment(widget.post.id, _commentController.text);
+      Comment newComment = await _profileService.addComment(
+          widget.post.id, _commentController.text);
 
-      // Tạo đối tượng comment đầy đủ
       newComment = Comment(
         id: newComment.id,
         content: newComment.content,
@@ -96,13 +94,11 @@ class _CommentScreenState extends State<CommentScreen> {
         destroyed: null,
       );
 
-      // Cập nhật UI
       setState(() {
         _comments.add(newComment);
         _commentController.clear();
       });
 
-      // Thông báo cho màn hình cha
       widget.onCommentAdded(newComment);
     } catch (error) {
       print('Error adding comment: $error');
@@ -116,7 +112,6 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
-  // Tách riêng hàm cập nhật comment
   Future<void> _updateExistingComment() async {
     if (editingComment == null || _commentController.text.isEmpty) return;
 
@@ -131,14 +126,9 @@ class _CommentScreenState extends State<CommentScreen> {
       final String userName = userProfile?.full_name ?? 'Unknown User';
       final String avatar = userProfile?.avatar ?? '';
 
-      // Gọi API để cập nhật comment
       Comment updatedComment = await _profileService.updateComment(
-          widget.post.id,
-          editingComment!.id,
-          _commentController.text
-      );
+          widget.post.id, editingComment!.id, _commentController.text);
 
-      // Tạo đối tượng comment đầy đủ
       Comment fullUpdatedComment = Comment(
         id: updatedComment.id,
         content: updatedComment.content,
@@ -146,12 +136,11 @@ class _CommentScreenState extends State<CommentScreen> {
         userId: userId,
         userEmail: userEmail,
         userName: userName,
-        createdAt: editingComment!.createdAt, // Giữ nguyên thời gian tạo
+        createdAt: editingComment!.createdAt,
         avatar: avatar,
         destroyed: null,
       );
 
-      // Cập nhật UI
       setState(() {
         int index = _comments.indexWhere((c) => c.id == editingComment!.id);
         if (index != -1) {
@@ -161,7 +150,6 @@ class _CommentScreenState extends State<CommentScreen> {
         _commentController.clear();
       });
 
-      // Thông báo cho màn hình cha
       widget.onCommentUpdated(fullUpdatedComment);
     } catch (error) {
       print('Error updating comment: $error');
@@ -175,7 +163,6 @@ class _CommentScreenState extends State<CommentScreen> {
     }
   }
 
-  // Hàm xử lý khi nhấn nút gửi/cập nhật
   void _handleSendButtonPress() {
     if (editingComment != null) {
       _updateExistingComment();
@@ -187,7 +174,8 @@ class _CommentScreenState extends State<CommentScreen> {
   Future<void> _editComment(Comment comment) async {
     setState(() {
       editingComment = comment;
-      _commentController.text = comment.content; // Đặt nội dung comment vào controller
+      _commentController.text =
+          comment.content;
     });
   }
 
@@ -227,12 +215,12 @@ class _CommentScreenState extends State<CommentScreen> {
           _comments.removeWhere((c) => c.id == commentId);
         });
 
-        // Thông báo cho màn hình cha
         widget.onCommentDeleted(commentId);
       } catch (error) {
         print('Error deleting comment: $error');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete comment. Please try again.')),
+          SnackBar(
+              content: Text('Failed to delete comment. Please try again.')),
         );
       } finally {
         setState(() {
@@ -250,7 +238,8 @@ class _CommentScreenState extends State<CommentScreen> {
       commentDate = DateTime.now();
     }
 
-    final String formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(commentDate);
+    final String formattedDate =
+        DateFormat('MMM d, yyyy • h:mm a').format(commentDate);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -258,21 +247,55 @@ class _CommentScreenState extends State<CommentScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            backgroundImage: NetworkImage(comment.avatar.isNotEmpty ? comment.avatar : 'https://example.com/default_avatar.png'),
+            backgroundImage: NetworkImage(comment.avatar.isNotEmpty
+                ? comment.avatar
+                : 'https://example.com/default_avatar.png'),
             backgroundColor: Colors.blue,
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Text(
-                      comment.userName,
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IntrinsicWidth(
+                          child: Container(
+                            constraints: BoxConstraints(maxWidth: 230), // Đặt giới hạn tối đa
+                            padding: EdgeInsets.fromLTRB(5, 5, 10, 5),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.topLeft,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  comment.userName,
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  comment.content,
+                                  style: TextStyle(fontSize: 13),
+                                  softWrap: true,
+                                  overflow: TextOverflow.visible,
+                                )
+                              ],
+                            ),
+                          ),
+                        )
+                      ],
                     ),
+                    Spacer(),
                     if (currentUserId == comment.userId)
                       IconButton(
                         icon: Icon(Icons.more_vert, size: 20),
@@ -283,19 +306,7 @@ class _CommentScreenState extends State<CommentScreen> {
                 SizedBox(height: 4),
                 Text(
                   formattedDate,
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                SizedBox(height: 4),
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    comment.content,
-                    style: TextStyle(fontSize: 14),
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 11),
                 ),
               ],
             ),
@@ -366,38 +377,40 @@ class _CommentScreenState extends State<CommentScreen> {
             child: TextField(
               controller: _commentController,
               decoration: InputDecoration(
-                hintText: editingComment == null ? 'Add a comment...' : 'Edit comment...',
+                hintText: editingComment == null
+                    ? 'Add a comment...'
+                    : 'Edit comment...',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
                 fillColor: Colors.grey[100],
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
               maxLines: null,
               textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _hasCommentText ? _handleSendButtonPress() : null,
+              onSubmitted: (_) =>
+                  _hasCommentText ? _handleSendButtonPress() : null,
             ),
           ),
           SizedBox(width: 8),
           _isLoading
               ? SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : IconButton(
-            icon: Icon(
-              editingComment == null ? Icons.send : Icons.check,
-              color: _hasCommentText
-                  ? Theme.of(context).primaryColor
-                  : Colors.grey,
-            ),
-            onPressed: _hasCommentText
-                ? _handleSendButtonPress
-                : null,
-          ),
+                  icon: Icon(
+                    editingComment == null ? Icons.send : Icons.check,
+                    color: _hasCommentText
+                        ? Theme.of(context).primaryColor
+                        : Colors.grey,
+                  ),
+                  onPressed: _hasCommentText ? _handleSendButtonPress : null,
+                ),
           if (editingComment != null)
             IconButton(
               icon: Icon(Icons.close, color: Colors.grey),
@@ -424,14 +437,15 @@ class _CommentScreenState extends State<CommentScreen> {
         children: [
           Expanded(
             child: _comments.isEmpty
-                ? Center(child: Text('No comments yet. Be the first to comment!'))
+                ? Center(
+                    child: Text('No comments yet. Be the first to comment!'))
                 : ListView.builder(
-              padding: EdgeInsets.all(16),
-              itemCount: _comments.length,
-              itemBuilder: (context, index) {
-                return _buildCommentItem(_comments[index]);
-              },
-            ),
+                    padding: EdgeInsets.all(16),
+                    itemCount: _comments.length,
+                    itemBuilder: (context, index) {
+                      return _buildCommentItem(_comments[index]);
+                    },
+                  ),
           ),
           _buildCommentInput(),
         ],

@@ -8,7 +8,6 @@ import '../../../core/utils/transfer_money.dart';
 import '../../../globals.dart';
 import '../../../widgets/app_bar_widget.dart';
 import '../../../widgets/notice_widget.dart';
-import '../../moments/screens/create_moment_screen.dart';
 import '../../navigation/screens/map_navigation_screen.dart';
 import '../../weather/services/LocationService.dart';
 import '../services/itinerary_api.dart';
@@ -35,24 +34,117 @@ class _MyTripState extends State<MyTripScreen> {
     _fetchItineraries();
   }
 
+  Future<bool> checkEmergencyPhone(
+      BuildContext context, String? trustPhone) async {
+    if (trustPhone != null) {
+      print("Số điện thoại khẩn cấp: $trustPhone");
+      return true;
+    }
+
+    bool? shouldUpdate = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Notice"),
+          content: Text(
+              "You do not have an emergency phone number. Do you want to update?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: Text("No"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: Text("Yes"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldUpdate == false) {
+      print("Không cập nhật số điện thoại.");
+      return false;
+    }
+
+    TextEditingController phoneController = TextEditingController();
+    bool? phoneEntered = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Update emergency phone number"),
+          content: TextField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              hintText: "Type phone number",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false);
+              },
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                String phone = phoneController.text.trim();
+
+                RegExp phoneRegex = RegExp(r'^(0\d{9}|\+84\d{9})$');
+
+                if (phone.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Please enter phone number!")));
+                  return;
+                }
+
+                if (!phoneRegex.hasMatch(phone)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Phone number is not valid!")));
+                  return;
+                }
+
+                Navigator.of(context).pop(true);
+              },
+              child: Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (phoneEntered == false || phoneController.text.isEmpty) {
+      print("Người dùng không nhập số điện thoại.");
+      return false;
+    }
+
+    print("Số điện thoại mới: ${phoneController.text}");
+    return true;
+  }
+
   Future<void> splitLocation(int? id, Itinerary itinerary) async {
-    //Change status
+    bool hasPhone = await checkEmergencyPhone(context, trustPhone);
+    if (!hasPhone) return;
 
     Itinerary GoItinerary = await ItineraryApi().getItineraryById(id);
 
     if (GoItinerary.start_date == null) {
-      print("❌ Chưa có ngày bắt đầu.");
+      print("Chưa có ngày bắt đầu.");
 
       bool? updateStatus =
           await ItineraryApi().goItineraryUpdate(id, itinerary);
-      //get by id itinerary to go
-      if (!updateStatus!) {
-        return;
-      }
+      if (!updateStatus!) return;
+
       return;
     } else {
       bool? update = await ItineraryApi().updateItinerary(id, itinerary);
-
       if (!update!) {
         setState(() {});
         return;
@@ -72,17 +164,16 @@ class _MyTripState extends State<MyTripScreen> {
           context, "Congratulations on completing your journey!", "confirm");
       await ItineraryApi().finishItineraryUpdate(id, itinerary);
       setState(() {});
-      print("✅ Chuyến đi đã hoàn thành!");
+      print("Chuyến đi đã hoàn thành!");
       return;
     }
 
     int currentDay = daysPassed + 1;
-
     List<Location> todayLocations =
         GoItinerary.locations.where((loc) => loc.day == currentDay).toList();
 
     if (todayLocations.isEmpty) {
-      print("❌ Không có địa điểm nào cho ngày $currentDay.");
+      print("Không có địa điểm nào cho ngày $currentDay.");
       return;
     }
 
@@ -98,7 +189,6 @@ class _MyTripState extends State<MyTripScreen> {
     });
 
     print("📍 Địa điểm ngày $currentDay: $locationNames");
-    print("🗺️ Danh sách tọa độ: $locations");
 
     Navigator.push(
       context,
@@ -124,20 +214,87 @@ class _MyTripState extends State<MyTripScreen> {
     });
   }
 
+  Future<bool> noticeDelete(
+      BuildContext context, String message, String type) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/logo.png',
+                      width: 40,
+                      height: 40,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (type != "error") ...[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(true);
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor:
+                              type == "error" ? Colors.red : Colors.cyan,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          "OK",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((value) => value ?? false);
+  }
+
   void _deleteItineraryApi(Map<String, dynamic> trip, String? userName) async {
-    bool? confirm;
-    while (confirm == null) {
-      confirm = await showCustomNotice(
-          context,
-          "Hi $userName! Please confirm that you want to delete this trip",
-          "confirm");
+    bool confirm = await showCustomNotice(
+        context,
+        "Hi $userName! Please confirm that you want to delete this trip",
+        "confirm");
+
+    if (confirm == false) {
+      return;
     }
 
     if (confirm == true) {
       final result = await _itineraryService.deleteItinerary(trip['id'] as int);
 
       if (result == true) {
-        await showCustomNotice(context, "Successfully deleted", "success");
+        await noticeDelete(context, "Successfully deleted", "success");
         setState(() {
           allItineraries.removeWhere((item) => item['id'] == trip['id']);
           allItineraries.remove(trip);
@@ -148,7 +305,6 @@ class _MyTripState extends State<MyTripScreen> {
       }
     } else {
       setState(() {
-        allItineraries.removeWhere((item) => item['id'] == trip['id']);
         _filterItineraries();
       });
     }
@@ -167,12 +323,10 @@ class _MyTripState extends State<MyTripScreen> {
 
   void _shareItinerary(Map<String, dynamic> trip) {
     final String shareText = 'Check out this itinerary: ${trip['title']}!';
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => CreateMomentScreen(userName: userGlobal!.displayName, userLocation: userGlobal!.address!, userAvatar: userGlobal!.avatar!)
-    //   ),
-    // );
+    Navigator.pushNamed(
+      context,
+      '/moment',
+    );
     print("Sharing: $shareText");
   }
 
@@ -198,8 +352,8 @@ class _MyTripState extends State<MyTripScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            DetailItineraryScreen(itineraryItems: data, type: 'view'),
+        builder: (context) => DetailItineraryScreen(
+            itineraryItems: data, title: data.title, type: 'view'),
       ),
     );
   }
@@ -260,7 +414,6 @@ class _MyTripState extends State<MyTripScreen> {
                           itemBuilder: (context, index) {
                             final trip = filteredItineraries[index];
 
-                            // Ensure 'locations' exists and is not empty
                             String? locationImageUrl;
                             if (trip['locations'] != null &&
                                 trip['locations'] is List &&
@@ -293,7 +446,6 @@ class _MyTripState extends State<MyTripScreen> {
     );
   }
 
-  // Tab Buttons
   Widget _buildTabItem(String title, int tabIndex) {
     bool isActive = selectedTab == tabIndex;
     return GestureDetector(
@@ -326,11 +478,12 @@ class _MyTripState extends State<MyTripScreen> {
       child: InkWell(
         onTap: () async {
           Itinerary itinerary = Itinerary.fromJson(trip);
-          await splitLocation(itinerary.id, itinerary);
+          getById(itinerary.id!);
         },
-        borderRadius: BorderRadius.circular(15), // Hiệu ứng nhấn
+        borderRadius: BorderRadius.circular(15),
         child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           elevation: 3,
           child: Padding(
             padding: const EdgeInsets.all(10),
@@ -341,13 +494,13 @@ class _MyTripState extends State<MyTripScreen> {
                   borderRadius: BorderRadius.circular(10),
                   child: imageItinerary != null && imageItinerary.isNotEmpty
                       ? Image.network(imageItinerary,
-                      width: 80, height: 80, fit: BoxFit.cover)
+                          width: 80, height: 80, fit: BoxFit.cover)
                       : Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[300], // Placeholder
-                    child: Icon(Icons.image, color: Colors.grey),
-                  ),
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300], // Placeholder
+                          child: Icon(Icons.image, color: Colors.grey),
+                        ),
                 ),
                 SizedBox(width: 12),
                 Expanded(
@@ -356,8 +509,8 @@ class _MyTripState extends State<MyTripScreen> {
                     children: [
                       Text(
                         trip['title'] ?? 'Unknown Title',
-                        style:
-                        TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 4),
@@ -367,16 +520,19 @@ class _MyTripState extends State<MyTripScreen> {
                               size: 16, color: Colors.grey),
                           SizedBox(width: 6),
                           Text('${trip['init_date']} days',
-                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                       SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.attach_money, size: 16, color: Colors.grey),
+                          Icon(Icons.attach_money,
+                              size: 16, color: Colors.grey),
                           SizedBox(width: 6),
                           Text(CurrencyFormatter.formatVnd(trip['price']),
-                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                       SizedBox(height: 4),
@@ -385,7 +541,8 @@ class _MyTripState extends State<MyTripScreen> {
                           Icon(Icons.place, size: 16, color: Colors.grey),
                           SizedBox(width: 6),
                           Text('${trip['locations']?.length ?? 0} Destinations',
-                              style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                     ],
@@ -465,7 +622,7 @@ class _MyTripState extends State<MyTripScreen> {
                                 borderRadius: BorderRadius.circular(10)),
                           ),
                           child:
-                          Text("Go", style: TextStyle(color: Colors.white)),
+                              Text("Go", style: TextStyle(color: Colors.white)),
                         ),
                     ],
                   ),

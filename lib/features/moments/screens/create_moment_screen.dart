@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,9 +9,7 @@ import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
 import 'package:lokaloka/features/moments/screens/select_itinerary_screen.dart';
 
-import '../../../core/utils/transfer_money.dart';
-import '../../itinerary/services/itinerary_api.dart';
-import '../../weather/services/LocationService.dart';
+import '../models/Feeling.dart';
 
 class CreateMomentScreen extends StatefulWidget {
   final String userName;
@@ -54,6 +51,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   LatLng? _selectedLocation;
   bool _isLoading = false;
   bool _isPublishing = false; // Thêm biến để theo dõi trạng thái đăng bài
+  Feeling? selectedFeeling;
 
   @override
   void initState() {
@@ -82,7 +80,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
   void _checkPublishButtonStatus() {
     setState(() {
-      _isPublishEnabled = _contentController.text.isNotEmpty || _uploadedImageUrls.isNotEmpty;
+      _isPublishEnabled =
+          _contentController.text.isNotEmpty || _uploadedImageUrls.isNotEmpty;
     });
   }
 
@@ -197,6 +196,31 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     }
   }
 
+  void _showFeelingSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(10),
+          child: Wrap(
+            children: feelings.map((feeling) {
+              return ListTile(
+                leading: Text(feeling.emoji, style: TextStyle(fontSize: 24)),
+                title: Text("Feeling ${feeling.name}"),
+                onTap: () {
+                  setState(() {
+                    selectedFeeling = feeling;
+                  });
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -225,7 +249,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.userName,
+                          "${widget.userName}",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -233,6 +257,20 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         )
                       ],
                     ),
+                    if (selectedFeeling != null)
+                      Row(
+                        children: [
+                          SizedBox(width: 4),
+                          Text(
+                            "is feeling ${selectedFeeling!.name} ",
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          Text(
+                            selectedFeeling!.emoji,
+                            style: TextStyle(fontSize: 20),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -245,15 +283,16 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                         controller: _contentController,
                         maxLines: null,
                         decoration: InputDecoration(
-                          hintText: 'Share your moment to connect with others...',
+                          hintText:
+                              'Share your moment to connect with others...',
                           border: InputBorder.none,
                         ),
                       ),
-                      _buildImageWidgets(),
                       if (selectedItinerary != null) ...[
-                        SizedBox(height: 16),
+                        SizedBox(height: 5),
                         _buildTripCard(selectedItinerary!),
                       ],
+                      _buildImageWidgets(),
                     ],
                   ),
                 ),
@@ -271,7 +310,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
               onPressed: _toggleFooter,
               backgroundColor: Theme.of(context).primaryColor,
               child: Icon(
-                _isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+                _isExpanded
+                    ? Icons.keyboard_arrow_down
+                    : Icons.keyboard_arrow_up,
                 color: Colors.white,
               ),
             ),
@@ -323,9 +364,17 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                             onTap: _pickImages,
                           ),
                           _buildActionButton(
+                            icon: Icons.emoji_emotions,
+                            label: "Emotions",
+                            color: Colors.yellow,
+                            onTap: () {
+                              _showFeelingSelector(context);
+                            },
+                          ),
+                          _buildActionButton(
                             icon: Icons.people,
                             label: 'Tag friends',
-                            color: Colors.blue,
+                            color: Colors.green,
                             onTap: () {
                               // TODO: Implement friend tagging
                             },
@@ -351,7 +400,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.grey,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -361,25 +411,31 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                                 SizedBox(width: 12),
                                 Expanded(
                                   child: ElevatedButton(
-                                    onPressed: _isPublishEnabled && !_isPublishing ? _handlePublish : null,
-                                    child: _isPublishing
-                                        ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        )
-                                    )
-                                        : Text('Public'),
+                                    onPressed:
+                                        _isPublishEnabled && !_isPublishing
+                                            ? _handlePublish
+                                            : null,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: _isPublishEnabled && !_isPublishing ? Colors.teal : Colors.grey,
+                                      backgroundColor:
+                                          _isPublishEnabled && !_isPublishing
+                                              ? Colors.teal
+                                              : Colors.grey,
                                       foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                     ),
+                                    child: _isPublishing
+                                        ? SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ))
+                                        : Text('Public'),
                                   ),
                                 ),
                               ],
@@ -404,7 +460,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     }
 
     return Wrap(
-      spacing: 8.0,
+      spacing: 3,
+      runSpacing: 3,
       children: _uploadedImageUrls.map((url) {
         return Container(
           width: 100, // Set width for the images
@@ -422,44 +479,64 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
   Future<bool> _publishPost() async {
     String content = _contentController.text;
-    Itinerary itinerary = Itinerary.fromJson(selectedItinerary!);
 
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please add some content or images.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Please add some content or images.')),
+        );
       }
-      return false; // Không publish thành công
+      return false;
     }
 
     String? token = await AuthService().getToken();
     if (token == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Token is expired or not found.')));
+          SnackBar(
+              content:
+                  Text('Token is expired or not found. Please log in again.')),
+        );
       }
-      return false; // Không publish thành công
+      Navigator.pushReplacementNamed(context, '/login');
+      return false;
     }
 
-    List<Map<String, dynamic>> imageList = _uploadedImageUrls.map((url) => {
-      'content': url,
-    }).toList();
+    String? userId = await AuthService().getUserIdFromToken();
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User ID not found in token.')),
+        );
+      }
+      return false;
+    }
 
-    // Chuẩn bị dữ liệu để gửi lên server
+    List<Map<String, dynamic>> imageList = _uploadedImageUrls
+        .map((url) => {
+              'content': url,
+            })
+        .toList();
+
     Map<String, dynamic> postData = {
       'content': content,
       'images': imageList,
+      'emotion': selectedFeeling?.name ?? null,
+      'user_id': userId,
+      'title': null,
+      'destroyed': false,
     };
 
-    // Chỉ thêm itinerary vào nếu đã chọn
     if (selectedItinerary != null) {
       try {
         Itinerary itinerary = Itinerary.fromJson(selectedItinerary!);
-        postData['itinerary'] = selectedItinerary;
+        postData['itineraryId'] = itinerary.id;
       } catch (e) {
         print('Error parsing itinerary: $e');
-        // Tiếp tục mà không có itinerary
       }
     }
+
+    print('data to BE: ${jsonEncode(postData)}');
 
     try {
       final response = await http.post(
@@ -468,30 +545,36 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'content': content,
-          'itinerary': itinerary,
-          'images': imageList, // Đảm bảo rằng 'images' là danh sách đối tượng
-        }),
+        body: jsonEncode(postData),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Post published successfully!')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Post published successfully!')),
+          );
         }
-        return true; // Publish thành công
+        return true;
       } else {
         final responseData = response.body;
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to publish post: ${response.statusCode} - $responseData')));
+          print(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Failed to publish post: ${response.statusCode} - $responseData'),
+            ),
+          );
         }
-        return false; // Không publish thành công
+        return false;
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error publishing post: $e')),
+        );
       }
-      return false; // Không publish thành công
+      return false;
     }
   }
 
@@ -532,77 +615,73 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   Widget _buildTripCard(Map<String, dynamic> trip) {
     return Padding(
       padding: const EdgeInsets.all(10),
-      child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        elevation: 3,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: trip['locations'] != null && trip['locations'].isNotEmpty
-                    ? Image.network(
-                  trip['locations'].firstWhere(
-                        (location) => location['image'] != null && location['image'].isNotEmpty,
-                    orElse: () => {'image': ''},
-                  )['image'],
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                )
-                    : Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.grey[300], // Placeholder
-                  child: Icon(Icons.image, color: Colors.grey),
-                ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: trip['locations'] != null && trip['locations'].isNotEmpty
+                  ? Image.network(
+                      trip['locations'].firstWhere(
+                        (location) =>
+                            location['image'] != null &&
+                            location['image'].isNotEmpty,
+                        orElse: () => {'image': ''},
+                      )['image'],
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300], // Placeholder
+                      child: Icon(Icons.image, color: Colors.grey),
+                    ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    trip['title'] ?? 'Unknown Title',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                      SizedBox(width: 6),
+                      Text('2 days 1 night',
+                          style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.attach_money, size: 16, color: Colors.grey),
+                      SizedBox(width: 6),
+                      Text(trip['price']?.toString() ?? 'N/A',
+                          style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.place, size: 16, color: Colors.grey),
+                      SizedBox(width: 6),
+                      Text('${trip['locations']?.length ?? 0} Destinations',
+                          style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                ],
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      trip['title'] ?? 'Unknown Title',
-                      style:
-                      TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today,
-                            size: 16, color: Colors.grey),
-                        SizedBox(width: 6),
-                        Text('2 days 1 night',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.attach_money, size: 16, color: Colors.grey),
-                        SizedBox(width: 6),
-                        Text(trip['price']?.toString() ?? 'N/A',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.place, size: 16, color: Colors.grey),
-                        SizedBox(width: 6),
-                        Text('${trip['locations']?.length ?? 0} Destinations',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

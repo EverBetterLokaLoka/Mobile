@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:lokaloka/features/itinerary/screens/my_trip_screen.dart';
 import '../../../core/styles/colors.dart';
 import '../../../core/utils/transfer_money.dart';
 import '../../../globals.dart';
 import '../../../widgets/notice_widget.dart';
 import '../services/itinerary_api.dart';
-import '../widgets/itinerary-app_bar.dart';
 import '../models/Itinerary.dart';
 import '../../../core/utils/fortmat_daytime.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 
 class DetailItineraryScreen extends StatefulWidget {
   final Itinerary itineraryItems;
+  final String? title;
   final String type;
 
-  const DetailItineraryScreen({Key? key, required this.itineraryItems, required this.type})
+  const DetailItineraryScreen(
+      {Key? key, required this.itineraryItems, this.title, required this.type})
       : super(key: key);
 
   @override
@@ -39,12 +39,88 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
     }
   }
 
+  Future<bool> showNotice(
+      BuildContext context, String message, String type) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/images/logo.png',
+                      width: 40,
+                      height: 40,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (type != "error") ...[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(true);
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor:
+                              type == "error" ? Colors.red : Colors.cyan,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          "OK",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((value) => value ?? false);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.itineraryItems.locations.isEmpty) {
       return Scaffold(
-        appBar: ItineraryAppBar(
-          titleText: 'Detail Itinerary',
+        appBar: AppBar(
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text("NO"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text("YES"),
+            ),
+          ],
+          title: Text('Detail Itinerary'),
         ),
         body: const Center(
           child: Text(
@@ -59,11 +135,14 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
         .toList();
 
     void handleDialog(BuildContext context) async {
-
-      bool? result = await showCustomNotice(
-          context, "Save Itinerary successfully.", "confirm");
+      bool? result = await showNotice(context,
+          "Save Itinerary successfully!\nDo you want to exits?", "confirm");
       if (result == true) {
-        Navigator.pushNamed(context, '/my-trip');
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/my-trip',
+          ModalRoute.withName('/home'),
+        );
       }
     }
 
@@ -100,7 +179,7 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                     const Text(
                       "Name:",
                       style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 5),
                     TextField(
@@ -134,10 +213,18 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                         ),
                         ElevatedButton(
                           onPressed: () {
-                            if (nameController.text.isEmpty) {
-                              setState(() {
-                                errorMessage = "Please enter a trip name...";
-                              });
+                            String trimmedText = nameController.text.trim();
+
+                            if (trimmedText.isEmpty) {
+                              if (nameController.text.isEmpty) {
+                                setState(() {
+                                  errorMessage = "Please enter a trip name.";
+                                });
+                              } else {
+                                setState(() {
+                                  errorMessage = "Enter valid trip name.";
+                                });
+                              }
                             } else {
                               Navigator.of(context).pop(nameController.text);
                             }
@@ -170,126 +257,180 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
       if (tripName != null) {
         widget.itineraryItems.title = tripName;
         int index = 0;
-          for (var location in widget.itineraryItems.locations) {
-            if (index < images.length) {
-              location.image = images[index];
-              index++;
-            }
+        for (var location in widget.itineraryItems.locations) {
+          if (index < images.length) {
+            location.image = images[index];
+            index++;
+          }
         }
-        String? result = await ItineraryApi()
-            .saveItinerary(context, widget.itineraryItems);
+        String? result =
+            await ItineraryApi().saveItinerary(context, widget.itineraryItems);
         if (result == "ok") {
           handleDialog(context);
+        } else if (result == "douLiName") {
+          await showCustomNotice(
+              context,
+              "Title already exits. Please enter the difference tile",
+              "noitice");
         }
-        else if(result == "douLiName")
-          {
-            await showCustomNotice(
-                context, "Title already exits. Please enter the difference tile", "noitice");
-          }
         print("User entered trip name: $tripName");
       } else {
         print("User canceled the dialog.");
       }
     }
 
-    return Scaffold(
-      appBar: ItineraryAppBar(
-        titleText: widget.itineraryItems.title!,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(travelDays, (index) {
-                  int dayNumber = index + 1;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedDay = dayNumber;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: selectedDay == dayNumber
-                            ? AppColors.orangeColor
-                            : AppColors.primaryColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                      ),
-                      child: Text(
-                        "Day $dayNumber",
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: filteredLocations.isNotEmpty
-                  ? ListView.builder(
-                padding: const EdgeInsets.all(14.0),
-                itemCount: filteredLocations.length,
-                itemBuilder: (context, index) {
-                  final location = filteredLocations[index];
-                  return _buildTimelineTile(location, index, index == 0,
-                      index == filteredLocations.length - 1);
-                },
-              )
-                  : const Center(
-                child: Text(
-                  "No locations available for this day.",
-                  style: TextStyle(fontSize: 16, color: Colors.black54),
+    return WillPopScope(
+        onWillPop: () async {
+          bool? shouldPop = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text("Confirm"),
+              content: Text("Are you sure you want to exit?"),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text("NO"),
                 ),
-              ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text("YES"),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: widget.type == "view"
-          ? null
-          : Stack(
-        alignment: Alignment.bottomRight,
-        children: [
-          if (_isExpanded) ...[
-            _buildOptionButton(Icons.bookmark, AppColors.orangeColor, 117, () {
-              _showTripDialog(context);
-            }),
-            _buildOptionButton(Icons.edit, AppColors.orangeColor, 68, () {
-              print("Edit Clicked");
-            }),
-          ],
-          Positioned(
-            bottom: 20,
-            right: 10,
-            child: FloatingActionButton.small(
-              onPressed: () {
-                setState(() {
-                  _isExpanded = !_isExpanded;
-                });
+          );
+          return shouldPop ?? false;
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(widget.title ?? 'Itinerary Detail'),
+            centerTitle: true,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back),
+              onPressed: () async {
+                bool? shouldPop = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text("Confirm"),
+                    content: Text("Are you sure you want to exit?"),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: Text("NO"),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: Text("YES"),
+                      ),
+                    ],
+                  ),
+                );
+                if (shouldPop == true) {
+                  Navigator.of(context).pop();
+                }
               },
-              backgroundColor: AppColors.orangeColor,
-              shape: const CircleBorder(),
-              child: Icon(
-                _isExpanded ? Icons.close : Icons.add,
-                color: Colors.white,
-              ),
             ),
           ),
-        ],
-      ),
-    );
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(travelDays, (index) {
+                      int dayNumber = index + 1;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedDay = dayNumber;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: selectedDay == dayNumber
+                                ? AppColors.orangeColor
+                                : AppColors.primaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                          ),
+                          child: Text(
+                            "Day $dayNumber",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: filteredLocations.isNotEmpty
+                      ? ListView.builder(
+                          padding: const EdgeInsets.all(14.0),
+                          itemCount: filteredLocations.length,
+                          itemBuilder: (context, index) {
+                            final location = filteredLocations[index];
+                            return _buildTimelineTile(
+                                location,
+                                index,
+                                index == 0,
+                                index == filteredLocations.length - 1);
+                          },
+                        )
+                      : const Center(
+                          child: Text(
+                            "No locations available for this day.",
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.black54),
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          floatingActionButton: widget.type == "view"
+              ? null
+              : Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    if (_isExpanded) ...[
+                      _buildOptionButton(
+                          Icons.bookmark, AppColors.orangeColor, 70, () {
+                        _showTripDialog(context);
+                      }),
+                      // _buildOptionButton(Icons.edit, AppColors.orangeColor, 68,
+                      //     () {
+                      //   print("Edit Clicked");
+                      // }),
+                    ],
+                    Positioned(
+                      bottom: 20,
+                      right: 10,
+                      child: FloatingActionButton.small(
+                        onPressed: () {
+                          setState(() {
+                            _isExpanded = !_isExpanded;
+                          });
+                        },
+                        backgroundColor: AppColors.orangeColor,
+                        shape: const CircleBorder(),
+                        child: Icon(
+                          _isExpanded ? Icons.close : Icons.add,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ));
   }
 
   Widget _buildTimelineTile(
@@ -368,7 +509,8 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                   height: 190,
                   width: double.infinity,
                   color: Colors.grey[300],
-                  child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                  child: Icon(Icons.image_not_supported,
+                      size: 50, color: Colors.grey),
                 );
               },
             ),
@@ -420,7 +562,7 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                     const Text("Cost: ",
                         style: TextStyle(color: AppColors.primaryColor)),
                     Text(
-                      CurrencyFormatter.formatVnd(location.price.toString()),
+                      CurrencyFormatter.formatVnd(location.price),
                       style: const TextStyle(color: Colors.black),
                     ),
                   ],
@@ -454,7 +596,7 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                         ),
                       ),
                       ...location.activities.map(
-                            (activity) => Padding(
+                        (activity) => Padding(
                           padding: const EdgeInsets.only(top: 5),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

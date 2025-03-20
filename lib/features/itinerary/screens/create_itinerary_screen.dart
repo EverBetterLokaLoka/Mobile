@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import '../../../globals.dart';
-import '../widgets/itinerary-app_bar.dart';
 import 'create_iitinerary_by_ai_screen.dart';
 import '../../../core/styles/colors.dart';
 import 'package:flutter/services.dart';
@@ -95,9 +94,9 @@ class _CreateItineraryState extends State<CreateItinerary> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ItineraryAppBar(
-        titleText: 'Create Itinerary ',
-        actions: [],
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text('Create Itinerary'),
       ),
       body: SafeArea(
         child: Padding(
@@ -143,6 +142,12 @@ class _CreateItineraryState extends State<CreateItinerary> {
                         prefixIcon: Icon(Icons.location_on),
                       ),
                       validator: (value) {
+                        final isValid = _locations.any((location) =>
+                        location['name']?.toString().toLowerCase() ==
+                            value?.toLowerCase());
+                        if (!isValid) {
+                          return 'Please choose valid province.';
+                        }
                         if (_selectedLocation == null) {
                           return 'Destination is required.';
                         }

@@ -3,7 +3,6 @@ import 'package:lokaloka/features/friend/models/friend.dart';
 import 'package:lokaloka/features/friend/services/friend_service.dart';
 import 'package:lokaloka/features/friend/screens/add_new_friends_screen.dart';
 import 'package:lokaloka/features/friend/screens/search_friends_screen.dart';
-import 'dart:developer' as developer;
 
 import 'package:lokaloka/widgets/notice_widget.dart';
 
@@ -14,7 +13,8 @@ class FriendsScreen extends StatefulWidget {
   State<FriendsScreen> createState() => _FriendsScreenState();
 }
 
-class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProviderStateMixin {
+class _FriendsScreenState extends State<FriendsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FriendService _friendService = FriendService();
   List<Friend> _friends = [];
@@ -207,42 +207,42 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _errorMessage.isNotEmpty
-                    ? Center(child: Text(_errorMessage))
-                    : ListView.builder(
-                  itemCount: _friends.length,
-                  itemBuilder: (context, index) {
-                    final friend = _friends[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        radius: 30,
-                        backgroundImage: friend.avatar != null
-                            ? NetworkImage(friend.avatar!)
-                            : null,
-                        child: friend.avatar == null
-                            ? Text(friend.username[0].toUpperCase())
-                            : null,
-                      ),
-                      title: Text(
-                        friend.username,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      subtitle: Text(
-                        friend.email,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.more_horiz),
-                        onPressed: () => _showFriendOptions(friend),
-                      ),
-                    );
-                  },
-                ),
+                        ? Center(child: Text(_errorMessage))
+                        : ListView.builder(
+                            itemCount: _friends.length,
+                            itemBuilder: (context, index) {
+                              final friend = _friends[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  radius: 30,
+                                  backgroundImage: friend.avatar != null
+                                      ? NetworkImage(friend.avatar!)
+                                      : null,
+                                  child: friend.avatar == null
+                                      ? Text(friend.username[0].toUpperCase())
+                                      : null,
+                                ),
+                                title: Text(
+                                  friend.username,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  friend.email,
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.more_horiz),
+                                  onPressed: () => _showFriendOptions(friend),
+                                ),
+                              );
+                            },
+                          ),
               ),
             ],
           ),
@@ -250,7 +250,6 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
           // Add New Friends Tab
           AddNewFriendsScreen(
             onFriendAdded: () {
-              // Refresh the friends list when a friend is added
               _loadFriends();
             },
           ),
@@ -259,10 +258,15 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
     );
   }
 
-  void _showUnfriendDialog(BuildContext context, String friendName, Friend friend) {
-    showCustomNotice(context, "Unfriend $friendName? Are you sure you want to unfriend $friendName?", "confirm").then((confirmed) {
+  void _showUnfriendDialog(
+      BuildContext context, String friendName, Friend friend) {
+    showCustomNotice(
+            context,
+            "Unfriend $friendName? Are you sure you want to unfriend $friendName?",
+            "confirm")
+        .then((confirmed) {
       if (confirmed == true) {
-        _unfriendUser(friend); // Gọi hàm xóa bạn
+        _unfriendUser(friend);
       }
     });
   }

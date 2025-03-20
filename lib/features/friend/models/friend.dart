@@ -1,6 +1,6 @@
 class Friend {
-  final int id;          // This is the follower/friendship record ID in some responses
-  final int userId;      // This is the actual user ID
+  final int id;
+  final int userId;
   final String username;
   final String email;
   final String? avatar;

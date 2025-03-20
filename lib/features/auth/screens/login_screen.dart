@@ -50,7 +50,7 @@ class _LoginState extends State<Login> {
     if (data != null) {
       Navigator.pushNamedAndRemoveUntil(context, '/home', (Route<dynamic> route) => false);
     } else {
-      message = "Invalid email or password.\n Please try again.";
+      message = "Invalid email or password.\nPlease try again.";
     }
   }
 
@@ -219,27 +219,26 @@ class _LoginState extends State<Login> {
 
                         const SizedBox(height: 15),
 
-                        // Forgot Password Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: TextButton(
-                            key: Key('forgot_password_button'),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => ForgotPassword()),
-                              );
-                            },
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.red,
-                            ),
-                            child: const Text(
-                              "Forgot password?",
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
+                        // SizedBox(
+                        //   width: double.infinity,
+                        //   child: TextButton(
+                        //     key: Key('forgot_password_button'),
+                        //     onPressed: () {
+                        //       Navigator.push(
+                        //         context,
+                        //         MaterialPageRoute(
+                        //             builder: (context) => ForgotPassword()),
+                        //       );
+                        //     },
+                        //     style: TextButton.styleFrom(
+                        //       foregroundColor: Colors.red,
+                        //     ),
+                        //     child: const Text(
+                        //       "Forgot password?",
+                        //       style: TextStyle(fontSize: 16),
+                        //     ),
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
