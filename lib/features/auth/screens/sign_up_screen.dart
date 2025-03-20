@@ -252,7 +252,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
           validator: (value) {
-            // Loại bỏ khoảng trắng đầu và cuối chuỗi
             String trimmedValue = value?.trim() ?? '';
 
             if (trimmedValue.isEmpty) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lokaloka/core/styles/colors.dart';
 import 'package:lokaloka/features/auth/models/user.dart';
 import 'package:lokaloka/features/profile/services/profile_services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -511,7 +512,7 @@ class _AccountTabState extends State<AccountTab> {
         child: ElevatedButton(
           onPressed: _handleLogout,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.orangeColor,
             textStyle: TextStyle(color: Colors.white),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),

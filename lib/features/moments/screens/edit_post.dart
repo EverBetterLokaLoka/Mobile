@@ -66,7 +66,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
           if (imageUrl != null) {
             setState(() {
               _uploadedImageUrls.add(imageUrl);
-              _checkChanges(); // Kiểm tra thay đổi
+              _checkChanges();
             });
           }
         }
@@ -112,14 +112,14 @@ class _EditPostScreenState extends State<EditPostScreen> {
   void _removeExistingImage(int index) {
     setState(() {
       _imagesToDelete.add(_existingImages[index].id);
-      _checkChanges(); // Cập nhật trạng thái thay đổi
+      _checkChanges();
     });
   }
 
   void _removeNewImage(int index) {
     setState(() {
       _uploadedImageUrls.removeAt(index);
-      _checkChanges(); // Cập nhật trạng thái thay đổi
+      _checkChanges();
     });
   }
 
@@ -236,6 +236,8 @@ class _EditPostScreenState extends State<EditPostScreen> {
               onChanged: (text) {
                 _checkChanges();
               },
+              keyboardType: TextInputType.multiline,
+              maxLines: null,
             ),
             SizedBox(height: 20),
             Text('Current Images', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -393,12 +395,12 @@ class _EditPostScreenState extends State<EditPostScreen> {
               label: Text(_isUploading ? 'Uploading...' : 'Add New Images'),
             ),
             Spacer(),
-            SizedBox(height: 30), // Nâng vị trí của nút lên 30
+            SizedBox(height: 30),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 SizedBox(
-                  width: 150, // Tăng độ rộng của nút
+                  width: 150,
                   child: TextButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey,
@@ -413,7 +415,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 150, // Tăng độ rộng của nút
+                  width: 150,
                   child: ElevatedButton(
                     onPressed: (_contentController.text.trim().isNotEmpty ||
                         _uploadedImageUrls.isNotEmpty ||

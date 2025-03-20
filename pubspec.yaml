@@ -66,6 +66,7 @@ dependencies:
   nominatim_flutter: ^0.0.6
   convex_bottom_bar: ^3.2.0
   cached_network_image: ^3.4.1
+  font_awesome_flutter: ^10.8.0
 
 dev_dependencies:
   flutter_test:

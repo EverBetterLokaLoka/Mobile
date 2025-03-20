@@ -177,7 +177,7 @@ class AuthService {
     int currentTime = DateTime.now().millisecondsSinceEpoch;
     int elapsedTime = (currentTime - savedTime) ~/ 1000;
 
-    if (elapsedTime > 1500) {
+    if (elapsedTime > 86400) {
       print("Token expired! Removing...");
       await prefs.remove("auth_token");
       await prefs.remove("token_saved_time");
@@ -201,7 +201,7 @@ class AuthService {
     int currentTime = DateTime.now().millisecondsSinceEpoch;
     int elapsedTime = (currentTime - savedTime) ~/ 1000;
 
-    if (elapsedTime > 1500) {
+    if (elapsedTime > 86400) {
       print("Token expired! User needs to log in again.");
       await prefs.remove("auth_token");
       await prefs.remove("token_saved_time");

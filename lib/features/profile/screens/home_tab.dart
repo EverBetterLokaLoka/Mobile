@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:lokaloka/core/constants/url_constant.dart';
 import 'package:lokaloka/features/auth/models/user.dart';
 import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/moments/screens/create_moment_screen.dart';
@@ -26,7 +25,7 @@ class _HomeTabState extends State<HomeTab> {
   List<Post> _posts = [];
   bool _isRefreshing = false;
   int? _currentUserId;
-  UserNormal? _currentUserProfile; // Biến để lưu thông tin người dùng.
+  UserNormal? _currentUserProfile;
   Set<int> _loadingLikes = {};
   final ImagePicker _picker = ImagePicker();
 
@@ -45,7 +44,7 @@ class _HomeTabState extends State<HomeTab> {
         setState(() {
           _currentUserId = int.tryParse(decodedToken['id'].toString());
         });
-        _getCurrentUserProfile(); // Gọi hàm để lấy thông tin người dùng.
+        _getCurrentUserProfile();
       }
     } catch (e) {
       print('Error getting current user ID: $e');
@@ -54,9 +53,7 @@ class _HomeTabState extends State<HomeTab> {
 
   Future<void> _getCurrentUserProfile() async {
     try {
-      // Gọi dịch vụ để lấy thông tin người dùng
       _currentUserProfile = await _profileService.getUserProfile();
-      // Cập nhật giao diện nếu cần
       setState(() {});
     } catch (e) {
       print('Error getting user profile: $e');
@@ -93,7 +90,6 @@ class _HomeTabState extends State<HomeTab> {
       return;
     }
 
-    // Immediate local state update
     bool isLiked = post.likes.any((like) => like.userId == _currentUserId);
     final List<Like> updatedLikes = List.from(post.likes);
     final int updatedLikeCount = isLiked ? post.likeCount - 1 : post.likeCount + 1;
@@ -103,15 +99,14 @@ class _HomeTabState extends State<HomeTab> {
         updatedLikes.removeWhere((like) => like.userId == _currentUserId);
       } else {
         updatedLikes.add(Like(
-          id: 0, // Temporary ID; the server will handle ID assignment
+          id: 0,
           postId: post.id,
           userId: _currentUserId!,
-          userEmail: "", // Bạn có thể lấy từ người dùng hoặc token nếu cần
+          userEmail: "",
           createdAt: DateTime.now(),
         ));
       }
 
-      // Update the post locally without affecting its other content
       final index = _posts.indexWhere((p) => p.id == post.id);
       if (index != -1) {
         _posts[index] = post.copyWith(
@@ -121,27 +116,24 @@ class _HomeTabState extends State<HomeTab> {
       }
     });
 
-    // Now make the API call to actually toggle the like
     try {
       await _profileService.toggleLike(post.id);
     } catch (e) {
       print('Error toggling like: $e');
 
-      // Handling failure scenario: revert local state to original
       setState(() {
         if (isLiked) {
           updatedLikes.add(Like(
-            id: 0, // Temporary ID for the revert scenario
+            id: 0,
             postId: post.id,
             userId: _currentUserId!,
-            userEmail: "", // Đặt đúng email nếu cần
+            userEmail: "",
             createdAt: DateTime.now(),
           ));
         } else {
           updatedLikes.removeWhere((like) => like.userId == _currentUserId);
         }
 
-        // Revert the post state if the API call fails
         final revertIndex = _posts.indexWhere((p) => p.id == post.id);
         if (revertIndex != -1) {
           _posts[revertIndex] = post.copyWith(
@@ -158,14 +150,12 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Future<void> _handleDeletePost(int postId) async {
-    // Hiển thị thông báo xác nhận xóa
     final confirmed = await showCustomNotice(
         context,
         "Are you sure you want to delete this post?",
         "confirm"
     );
 
-    // Nếu người dùng xác nhận xóa
     if (confirmed ?? false) {
       try {
         await _profileService.deletePost(postId);
@@ -206,7 +196,6 @@ class _HomeTabState extends State<HomeTab> {
     });
   }
 
-  // Thêm hàm xử lý khi comment được cập nhật
   void _handleCommentUpdated(Post post, Comment updatedComment) {
     setState(() {
       final postIndex = _posts.indexWhere((p) => p.id == post.id);
@@ -216,11 +205,9 @@ class _HomeTabState extends State<HomeTab> {
         );
 
         if (commentIndex != -1) {
-          // Tạo danh sách comments mới với comment đã được cập nhật
           List<Comment> updatedComments = List.from(_posts[postIndex].comments);
           updatedComments[commentIndex] = updatedComment;
 
-          // Cập nhật post với danh sách comments mới
           _posts[postIndex] = _posts[postIndex].copyWith(
             comments: updatedComments,
           );
@@ -229,17 +216,14 @@ class _HomeTabState extends State<HomeTab> {
     });
   }
 
-  // Thêm hàm xử lý khi comment bị xóa
   void _handleCommentDeleted(Post post, int commentId) {
     setState(() {
       final postIndex = _posts.indexWhere((p) => p.id == post.id);
       if (postIndex != -1) {
-        // Tạo danh sách comments mới không bao gồm comment đã bị xóa
         List<Comment> updatedComments = _posts[postIndex].comments
             .where((c) => c.id != commentId)
             .toList();
 
-        // Cập nhật post với danh sách comments mới và giảm số lượng comment
         _posts[postIndex] = _posts[postIndex].copyWith(
           comments: updatedComments,
           commentCount: _posts[postIndex].commentCount - 1,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lokaloka/features/friend/models/friend.dart';
 import 'package:lokaloka/features/friend/services/friend_service.dart';
-import 'package:lokaloka/features/friend/widgets/friend_list_item.dart';
 import 'dart:developer' as developer;
+
 class AddNewFriendsScreen extends StatefulWidget {
   final Function? onFriendAdded;
 

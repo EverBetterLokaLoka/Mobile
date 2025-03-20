@@ -3,6 +3,7 @@ import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/auth/models/user.dart';
 import 'package:lokaloka/features/profile/services/profile_services.dart';
 import 'package:lokaloka/globals.dart';
+import '../../../core/styles/colors.dart';
 import 'profile_header.dart';
 import 'account_tab.dart';
 import 'home_tab.dart';
@@ -116,9 +117,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         ProfileHeader(user: user!),
         TabBar(
           controller: _tabController,
-          labelColor: Colors.orange,
+          labelColor: AppColors.orangeColor,
           unselectedLabelColor: Colors.black,
-          indicatorColor: Colors.orange,
+          indicatorColor: AppColors.orangeColor,
           tabs: [
             Tab(text: "My Home"),
             Tab(text: "Account"),

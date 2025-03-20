@@ -484,9 +484,26 @@ class _MapScreenState extends State<MapNavigationScreen> {
                                 return Icons.directions;
                               }
                             }
-
                             if (index == currentStep &&
-                                instruction.contains("arrive at destination")) {
+                                instruction.contains("Waypoint 1")) {
+                              Future.delayed(Duration(milliseconds: 300), () {
+                                _showCompletionPopup(context);
+                              });
+                            }
+                            if (index == currentStep &&
+                                instruction.contains("Waypoint 2")) {
+                              Future.delayed(Duration(milliseconds: 300), () {
+                                _showCompletionPopup(context);
+                              });
+                            }
+                            if (index == currentStep &&
+                                instruction.contains("Waypoint 3")) {
+                              Future.delayed(Duration(milliseconds: 300), () {
+                                _showCompletionPopup(context);
+                              });
+                            }
+                            if (index == currentStep &&
+                                instruction.contains("Arrive at destination")) {
                               Future.delayed(Duration(milliseconds: 300), () {
                                 _showCompletionPopup(context);
                               });

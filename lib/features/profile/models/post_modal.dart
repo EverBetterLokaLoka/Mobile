@@ -4,6 +4,7 @@ class Post {
   final int userId;
   final String userEmail;
   final String userName;
+  String? emotion;
   final String createdAt;
   final String? updatedAt;
   final String avatar;
@@ -13,23 +14,25 @@ class Post {
   final int likeCount;
   final int commentCount;
   final bool destroyed;
+  int? itineraryId;
 
-  Post({
-    required this.id,
-    required this.content,
-    required this.userId,
-    required this.userEmail,
-    required this.userName,
-    required this.createdAt,
-    this.updatedAt,
-    required this.avatar,
-    required this.comments,
-    required this.likes,
-    required this.images,
-    required this.likeCount,
-    required this.commentCount,
-    required this.destroyed,
-  });
+  Post(
+      {required this.id,
+      required this.content,
+      required this.userId,
+      required this.userEmail,
+      this.emotion,
+      required this.userName,
+      required this.createdAt,
+      this.updatedAt,
+      required this.avatar,
+      required this.comments,
+      required this.likes,
+      required this.images,
+      required this.likeCount,
+      required this.commentCount,
+      required this.destroyed,
+      this.itineraryId});
 
   Post copyWith({
     int? id,
@@ -38,6 +41,7 @@ class Post {
     String? userEmail,
     String? userName,
     String? createdAt,
+    String? emotion,
     String? updatedAt,
     String? avatar,
     List<Comment>? comments,
@@ -46,48 +50,54 @@ class Post {
     int? likeCount,
     int? commentCount,
     bool? destroyed,
+    int? itineraryId,
   }) {
     return Post(
-      id: id ?? this.id,
-      content: content ?? this.content,
-      userId: userId ?? this.userId,
-      userEmail: userEmail ?? this.userEmail,
-      userName: userName ?? this.userName,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      avatar: avatar ?? this.avatar,
-      comments: comments ?? this.comments,
-      likes: likes ?? this.likes,
-      images: images ?? this.images,
-      likeCount: likeCount ?? this.likeCount,
-      commentCount: commentCount ?? this.commentCount,
-      destroyed: destroyed ?? this.destroyed,
-    );
+        id: id ?? this.id,
+        content: content ?? this.content,
+        userId: userId ?? this.userId,
+        userEmail: userEmail ?? this.userEmail,
+        userName: userName ?? this.userName,
+        emotion: emotion ?? this.emotion,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        avatar: avatar ?? this.avatar,
+        comments: comments ?? this.comments,
+        likes: likes ?? this.likes,
+        images: images ?? this.images,
+        likeCount: likeCount ?? this.likeCount,
+        commentCount: commentCount ?? this.commentCount,
+        destroyed: destroyed ?? this.destroyed,
+        itineraryId: itineraryId ?? this.itineraryId);
   }
 
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
-      id: json['id'] ?? 0,
-      content: json['content'] ?? '',
-      userId: json['userId'] ?? 0,
-      userEmail: json['userEmail'] ?? '',
-      userName: json['userName'] ?? '',
-      createdAt: json['createdAt'] ?? DateTime.now().toIso8601String(),
-      updatedAt: json['updatedAt'],
-      avatar: json['avatar'] ?? '',
-      comments: (json['comments'] as List<dynamic>?)
-          ?.map((comment) => Comment.fromJson(comment))
-          .toList() ?? [],
-      likes: (json['likes'] as List<dynamic>?)
-          ?.map((like) => Like.fromJson(like))
-          .toList() ?? [],
-      images: (json['images'] as List<dynamic>?)
-          ?.map((image) => PostImage.fromJson(image))
-          .toList() ?? [],
-      likeCount: json['likeCount'] ?? 0,
-      commentCount: json['commentCount'] ?? 0,
-      destroyed: json['destroyed'] ?? false,
-    );
+        id: json['id'] ?? 0,
+        content: json['content'] ?? '',
+        userId: json['userId'] ?? 0,
+        userEmail: json['userEmail'] ?? '',
+        userName: json['userName'] ?? '',
+        emotion: json['emotion'] ?? '',
+        createdAt: json['createdAt'] ?? DateTime.now().toIso8601String(),
+        updatedAt: json['updatedAt'],
+        avatar: json['avatar'] ?? '',
+        comments: (json['comments'] as List<dynamic>?)
+                ?.map((comment) => Comment.fromJson(comment))
+                .toList() ??
+            [],
+        likes: (json['likes'] as List<dynamic>?)
+                ?.map((like) => Like.fromJson(like))
+                .toList() ??
+            [],
+        images: (json['images'] as List<dynamic>?)
+                ?.map((image) => PostImage.fromJson(image))
+                .toList() ??
+            [],
+        likeCount: json['likeCount'] ?? 0,
+        commentCount: json['commentCount'] ?? 0,
+        destroyed: json['destroyed'] ?? false,
+        itineraryId: json['itineraryId'] ?? 0);
   }
 
   Map<String, dynamic> toJson() {
@@ -97,6 +107,7 @@ class Post {
       'userId': userId,
       'userEmail': userEmail,
       'userName': userName,
+      'emotion': emotion,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'avatar': avatar,
@@ -106,6 +117,7 @@ class Post {
       'likeCount': likeCount,
       'commentCount': commentCount,
       'destroyed': destroyed,
+      'itineraryId': itineraryId,
     };
   }
 }

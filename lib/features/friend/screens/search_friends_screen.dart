@@ -16,8 +16,8 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
   final FriendService _friendService = FriendService();
   final TextEditingController _searchController = TextEditingController();
   List<Friend> _searchResults = [];
-  Map<String, String> _friendStatuses = {}; // Store friend statuses by email
-  Map<String, int> _followerIds = {}; // Store follower IDs by email
+  Map<String, String> _friendStatuses = {};
+  Map<String, int> _followerIds = {};
   bool _isSearching = false;
   bool _hasSearched = false;
 
