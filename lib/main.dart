@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'features/auth/services/auth_services.dart';
 import 'routes/app_routes.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 
 void main() async {
@@ -10,6 +11,8 @@ void main() async {
   AuthService authService = AuthService();
   bool isLoggedIn = await authService.isTokenValid();
 
+  // Initialize Hive
+  await Hive.initFlutter();
   runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 

@@ -4,7 +4,7 @@ import '../../features/auth/services/auth_services.dart';
 import '../constants/url_constant.dart';
 
 class ApiService {
-  final String baseUrl = 'https://26d3-113-176-99-140.ngrok-free.app/api';
+  final String baseUrl = 'https://adb4-113-176-99-140.ngrok-free.app/api';
 
   final String imgKey = "725fa29bb10ba691adbaa03f93017c3fbb716315";
 
@@ -68,7 +68,14 @@ class ApiService {
     // Trả về phản hồi ngay cả khi gặp lỗi
     return response;
   }
-
+  Future<http.Response> get(String path) async {
+    return await request(
+      path: path,
+      method: 'GET',
+      typeUrl: UrlConstant().baseUrl,
+      currentPath: path, // hoặc path của bạn có thể là một tham số khác
+    );
+  }
   Map<String, String> _defaultHeaders(String token) {
     return {
       'Content-Type': 'application/json',
