@@ -68,7 +68,14 @@ class ApiService {
     // Trả về phản hồi ngay cả khi gặp lỗi
     return response;
   }
-
+  Future<http.Response> get(String path) async {
+    return await request(
+      path: path,
+      method: 'GET',
+      typeUrl: UrlConstant().baseUrl,
+      currentPath: path, // hoặc path của bạn có thể là một tham số khác
+    );
+  }
   Map<String, String> _defaultHeaders(String token) {
     return {
       'Content-Type': 'application/json',
