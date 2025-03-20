@@ -133,13 +133,19 @@ class _AccountTabState extends State<AccountTab> {
   void _checkForChanges() {
     if (!isEditing) return;
 
+    // Trim whitespace from text fields before comparison
+    String trimmedPhone = phoneController.text.trim();
+    String trimmedAddress = addressController.text.trim();
+    String trimmedEmergency = emergencyController.text.trim();
+    String trimmedFullName = fullNameController.text.trim();
+
     bool changed =
-        fullNameController.text != originalValues['fullName'] ||
+        trimmedFullName != originalValues['fullName']?.trim() ||
             dobController.text != originalValues['dob'] ||
             genderController.text != originalValues['gender'] ||
-            phoneController.text != originalValues['phone'] ||
-            addressController.text != originalValues['address'] ||
-            emergencyController.text != originalValues['emergency'];
+            (trimmedPhone != originalValues['phone']?.trim() && trimmedPhone.isNotEmpty) ||
+            (trimmedAddress != originalValues['address']?.trim() && trimmedAddress.isNotEmpty) ||
+            (trimmedEmergency != originalValues['emergency']?.trim() && trimmedEmergency.isNotEmpty);
 
     if (changed != hasChanges) {
       setState(() {
@@ -173,19 +179,26 @@ class _AccountTabState extends State<AccountTab> {
     });
   }
 
+
+
   String? validatePhone(String? value) {
-    if (value != null && value.isNotEmpty) {
-      // Kiểm tra định dạng số điện thoại
-      if (!RegExp(r'^(|\d{10})$').hasMatch(value)) {
-        return 'Enter a valid phone number (format: 0xx-xxxxxxx)';
-      }
+    if (value == null || value.isEmpty || value.trim().isEmpty) {
+      return null;
     }
-    return null; // Trả về null nếu không có lỗi
+    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+      return 'The phone number can only contain digits.';
+    }
+
+    if (!RegExp(r'^(?!0+$)[0-9]{10,11}$').hasMatch(value)) {
+      return 'Invalid phone number.';
+    }
+    return null;
   }
 
+
   String? validateFullName(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Full name is required';
+    if (value == null || value.isEmpty || value.trim().isEmpty) {
+      return 'Please enter your full name.';
     }
     if (value.length < 2) {
       return 'Name must be at least 2 characters';
@@ -201,13 +214,6 @@ class _AccountTabState extends State<AccountTab> {
 
         if (date.isAfter(now)) {
           return 'Date of birth cannot be in the future';
-        }
-
-        final minimumAge = 18;
-        final minimumDate = DateTime(now.year - minimumAge, now.month, now.day);
-
-        if (date.isAfter(minimumDate)) {
-          return 'You must be at least $minimumAge years old';
         }
       } catch (e) {
         return 'Enter a valid date (YYYY-MM-DD)';
@@ -231,28 +237,44 @@ class _AccountTabState extends State<AccountTab> {
   }
 
   String? validateEmergencyNumber(String? value) {
-    if (value == null || value.isEmpty) {
-      return null; // Không bắt buộc
+    if (value == null || value.isEmpty || value.trim().isEmpty) {
+      return null;
+    }
+    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+      return 'The emergency number can only contain digits.';
     }
 
-    if (!RegExp(r'^[0-9]{10,11}$').hasMatch(value)) {
-      return 'Enter a valid emergency number (10-11 digits)';
+    if (!RegExp(r'^(?!0+$)[0-9]{10,11}$').hasMatch(value)) {
+      return 'Invalid emergency number.';
     }
 
     return null;
   }
 
-  Future<void> _selectDate() async {
+  Future<void> _selectDate(BuildContext context, TextEditingController dobController) async {
     DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().subtract(Duration(days: 365 * 18)), // Mặc định 18 tuổi
+      initialDate: DateTime.now(), // Mặc định chọn 18 tuổi trước
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
+
     if (pickedDate != null) {
-      setState(() {
-        dobController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
-      });
+      String formattedDate = DateFormat('yyyy-MM-dd').format(pickedDate);
+
+      // Kiểm tra hợp lệ
+      String? validationError = validateDob(formattedDate);
+      if (validationError != null) {
+        showCustomNotification(
+          context: context,
+          notification: CustomNotification(
+            message: validationError,
+            isError: true,
+          ),
+        );
+      } else {
+        dobController.text = formattedDate;
+      }
     }
   }
 
@@ -416,7 +438,7 @@ class _AccountTabState extends State<AccountTab> {
           height: 50,
           child: DropdownButtonFormField<String>(
             value: genderController.text.isNotEmpty ? genderController.text : null,
-            items: ['MALE', 'FEMALE', 'OTHER'].map((gender) {
+            items: ['Male', 'Female', 'Other'].map((gender) {
               return DropdownMenuItem(value: gender, child: Text(gender));
             }).toList(),
             onChanged: isEditing ? (value) {
@@ -446,21 +468,27 @@ class _AccountTabState extends State<AccountTab> {
           child: TextFormField(
             controller: controller,
             enabled: enabled,
-            focusNode: dobFocus,
-            validator: validateDob,
+            validator: (value) => validateDob(value),
             decoration: InputDecoration(
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              suffixIcon: enabled ? IconButton(icon: Icon(Icons.calendar_today), onPressed: _selectDate) : null,
+              suffixIcon: enabled
+                  ? IconButton(
+                icon: Icon(Icons.calendar_today),
+                onPressed: () => _selectDate(context, controller), // Đúng cách gọi callback
+              )
+                  : null,
               errorStyle: TextStyle(color: Colors.red),
+              hintText: "YYYY-MM-DD",
             ),
-            readOnly: true,
-            onTap: enabled ? _selectDate : null,
+            readOnly: true, // Không cho phép nhập tay
+            onTap: enabled ? () => _selectDate(context, controller) : null, // Đúng cách gọi callback
           ),
         ),
       ],
     );
   }
+
 
   Widget _buildFormField(
       String label,
