@@ -103,6 +103,28 @@ class _AccountTabState extends State<AccountTab> {
     _addChangeListeners();
   }
 
+  void _clearValidationErrors() {
+    _formKey.currentState?.reset(); // Dọn dẹp tất cả các trạng thái lỗi
+    fullNameController.clear(); // Xóa nội dung của từng trường
+    dobController.clear();
+    genderController.clear();
+    emailController.clear();
+    phoneController.clear();
+    addressController.clear();
+    emergencyController.clear();
+
+    // reset giá trị ban đầu nếu cần
+    fullNameController.text = widget.user.full_name;
+    dobController.text = widget.user.dob ?? '';
+    genderController.text = widget.user.gender ?? '';
+    emailController.text = widget.user.email;
+    phoneController.text = widget.user.phone!;
+    addressController.text = widget.user.address!;
+    emergencyController.text = widget.user.emergency_numbers!;
+
+    // Reset focus nếu cần
+    FocusScope.of(context).unfocus();
+  }
   void _saveOriginalValues() {
     originalValues = {
       'fullName': widget.user.full_name ?? '',
@@ -651,6 +673,7 @@ class _AccountTabState extends State<AccountTab> {
                   isEditing = false;
                   hasChanges = false;
                   _initializeControllers();
+                  _clearValidationErrors();
                 });
               },
               style: ElevatedButton.styleFrom(
