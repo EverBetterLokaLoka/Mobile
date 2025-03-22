@@ -24,7 +24,7 @@ class NotificationService extends ChangeNotifier {
 
   static const int _maxReconnectAttempts = 5;
   static const Duration _reconnectDelay = Duration(seconds: 3);
-  static const String _wsBaseUrl = 'wss://adb4-113-176-99-140.ngrok-free.app/ws';
+  static const String _wsBaseUrl = 'wss://8fbe-14-174-105-39.ngrok-free.app/ws';
 
   bool get isConnected => _isConnected;
   List<NotificationModel> get notifications => List.unmodifiable(_notifications);

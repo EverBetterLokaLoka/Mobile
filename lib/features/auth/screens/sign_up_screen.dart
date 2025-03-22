@@ -217,7 +217,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           validator: (value) {
             String trimmedValue = value?.trim() ?? '';
-            if (value == null || value.isEmpty) {
+            if (value == null || value.isEmpty || value.trim().isEmpty) {
               return "Please enter your full name";
             }
             if (value.contains(" ") && value.isEmpty) {
@@ -309,7 +309,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return "Please enter your $label";
+              return "Please enter your password.";
             }
             if (value.length < 8 || value.length > 16) {
               return "Password must be between 8 \nand 16 characters.";
@@ -378,6 +378,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               return "Must contain characters.";
             } else if (value != _passwordController.text) {
               return "Passwords do not match. Please try again.";
+            } else if (value.length < 8 || value.length > 16) {
+              return "Password must be between 8 \nand 16 characters.";
             }
             return null;
           },
