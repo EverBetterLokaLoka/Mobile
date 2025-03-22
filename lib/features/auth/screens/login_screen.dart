@@ -155,7 +155,7 @@ class _LoginState extends State<Login> {
                               return "Please enter your email.";
                             }
                             if (value.contains(' ')) {
-                              return "Please enter your email.";
+                              return "Invalid email or password. Please try again.";
                             }
                             if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
                                 .hasMatch(value)) {
@@ -218,27 +218,6 @@ class _LoginState extends State<Login> {
                         ),
 
                         const SizedBox(height: 15),
-
-                        // SizedBox(
-                        //   width: double.infinity,
-                        //   child: TextButton(
-                        //     key: Key('forgot_password_button'),
-                        //     onPressed: () {
-                        //       Navigator.push(
-                        //         context,
-                        //         MaterialPageRoute(
-                        //             builder: (context) => ForgotPassword()),
-                        //       );
-                        //     },
-                        //     style: TextButton.styleFrom(
-                        //       foregroundColor: Colors.red,
-                        //     ),
-                        //     child: const Text(
-                        //       "Forgot password?",
-                        //       style: TextStyle(fontSize: 16),
-                        //     ),
-                        //   ),
-                        // ),
                       ],
                     ),
                   ),
