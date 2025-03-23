@@ -136,6 +136,10 @@ class AuthService {
         return null;
       }
 
+      if(response.statusCode == 401){
+        return "Invalid email or password";
+      }
+
       await saveToken(token);
       return responseData.containsKey('data')
           ? UserNormal.fromJson(responseData['data'])

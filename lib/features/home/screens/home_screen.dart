@@ -349,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: AppColors.primaryColor)),
               Spacer(),
               TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/explore'),
+                onPressed: () => print('See all'),
                 child: Text(
                   "See all",
                   style: GoogleFonts.poppins(

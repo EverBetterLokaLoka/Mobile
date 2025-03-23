@@ -28,6 +28,11 @@ class _LoginState extends State<Login> {
   final _formKey = GlobalKey<FormState>();
   String message = "";
 
+  void clearTextField() {
+    _emailController.clear();
+    _passwordController.clear();
+  }
+
   void _showError(BuildContext context, String message) {
     showCustomNotice(context, message, "error");
   }
@@ -41,30 +46,47 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> login(BuildContext context) async {
+    setState(() {
+      _emailError = null;
+      _passwordError = null;
+      message = "";
+    });
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      _showError(context, "Please enter both email and password.");
+      setState(() {
+        _emailError = email.isEmpty ? "Please enter your email." : null;
+        _passwordError = password.isEmpty ? "Please enter your password." : null;
+      });
       return;
     }
 
     try {
       final result = await _authService.signIn(email, password, currentPath);
 
-      switch (result) {
-        case "NO_INTERNET":
-          _showError(context, "No internet connection. Please check your network.");
-          return;
-        case "INVALID_RESPONSE":
-          _showError(context, "Server error. Please try again later.");
-          return;
-        case null:
-          setState(() => message = "Invalid email or password.");
-          return;
-        default:
-          _navigateToHome(context);
+      if (result == "NO_INTERNET") {
+        _showError(context, "No internet connection. Please check your network.");
+        return;
+      } else if (result == "INVALID_RESPONSE") {
+        _showError(context, "Server error. Please try again later.");
+        return;
+      } else if (result == "Invalid email or password") {
+        setState(() {
+          _emailError = "Invalid email or password. Please try again";
+          _passwordError = "Invalid email or password. Please try again";
+        });
+        return;
+      } else if (result == null) {
+        setState(() {
+          // message = "Invalid email or password. Please try again";
+          _passwordError = "Invalid email or password. Please try again";
+        });
+        return;
       }
+
+      _navigateToHome(context);
     } catch (e) {
       _showError(context, "An unexpected error occurred.");
     }
@@ -170,7 +192,6 @@ class _LoginState extends State<Login> {
                             hintText: "Enter your email",
                             prefixIcon: const Icon(Icons.email, color: AppColors.orangeColor),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            errorText: _emailError,
                           ),
                           onChanged: (value) {
                             setState(() {
@@ -199,7 +220,7 @@ class _LoginState extends State<Login> {
 
                         if (_emailError != null)
                           Padding(
-                            padding: const EdgeInsets.only(top: 0, left: 10),
+                            padding: const EdgeInsets.only(top: 1, left: 10),
                             child: Text(
                               _emailError!,
                               key: const Key("email_error"),
@@ -234,7 +255,6 @@ class _LoginState extends State<Login> {
                               },
                             ),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                            errorText: _passwordError,
                           ),
                           onChanged: (value) {
                             setState(() {
@@ -268,7 +288,7 @@ class _LoginState extends State<Login> {
 
                         if (_passwordError != null)
                           Padding(
-                            padding: const EdgeInsets.only(top: 0, left: 10),
+                            padding: const EdgeInsets.only(top: 1, left: 10),
                             child: Text(
                               _passwordError!,
                               key: const Key("password_error"),

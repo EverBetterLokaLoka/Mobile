@@ -8,11 +8,9 @@ import 'package:lokaloka/features/profile/services/profile_services.dart';
 import 'package:lokaloka/features/profile/screens/comment_screen.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
-
 import '../../itinerary/models/Itinerary.dart';
 import '../../itinerary/screens/detail_itinerary_screen.dart';
 import '../../itinerary/services/itinerary_api.dart';
-import '../../navigation/screens/map_navigation_screen.dart';
 import '../models/Feeling.dart';
 
 class MomentsScreen extends StatefulWidget {
@@ -318,45 +316,97 @@ class PostCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(backgroundImage: NetworkImage(post.avatar)),
               SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text(post.userName,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      SizedBox(
-                        width: 5,
-                      ),
-                      if (post.emotion != null && post.emotion!.isNotEmpty)
-                        Row(
-                          children: [
-                            Text(
-                              "is feeling ${post.emotion}",
-                              style: TextStyle(fontSize: 14),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              getFeelingEmoji(post.emotion!),
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      SizedBox(height: 5),
-                      Text(formattedDate,
-                          style: TextStyle(color: Colors.grey, fontSize: 11)),
-                    ],
-                  )
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        double availableWidth =
+                            constraints.maxWidth - 10; // Trừ padding
+
+                        TextPainter textPainter = TextPainter(
+                          text: TextSpan(
+                            text: "is feeling ${post.emotion}",
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          maxLines: 1,
+                          textDirection: Directionality.of(context),
+                        )..layout(maxWidth: availableWidth);
+
+                        bool shouldBreakLine = textPainter.didExceedMaxLines;
+
+                        return shouldBreakLine
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        post.userName,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        "is feeling ${post.emotion}",
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        getFeelingEmoji(post.emotion!),
+                                        style: TextStyle(fontSize: 18),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Text(
+                                    post.userName,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  SizedBox(width: 5),
+                                  if (post.emotion != null &&
+                                      post.emotion!.isNotEmpty)
+                                    Row(
+                                      children: [
+                                        Text(
+                                          "is feeling ${post.emotion}",
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          getFeelingEmoji(post.emotion!),
+                                          style: TextStyle(fontSize: 18),
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              );
+                      },
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      formattedDate,
+                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -398,26 +448,28 @@ class PostCard extends StatelessWidget {
         if (limitedImages.length == 3)
           _buildSpecialLayout(limitedImages, context)
         else
-        LayoutBuilder(
-          builder: (context, constraints) {
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: _getCrossAxisCount(images.length),
-                crossAxisSpacing: 5,
-                mainAxisSpacing: 5,
-              ),
-              itemCount: hasMoreImages ? 6 : limitedImages.length,
-              itemBuilder: (context, index) {
-                if (index == 5 && hasMoreImages) {
-                  return _buildMoreImagesOverlay(limitedImages[5], images.length - 6, context, images);
-                }
-                return _buildImageItem(limitedImages[index], index, context, images);
-              },
-            );
-          },
-        ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: _getCrossAxisCount(images.length),
+                  crossAxisSpacing: 5,
+                  mainAxisSpacing: 5,
+                ),
+                itemCount: hasMoreImages ? 6 : limitedImages.length,
+                itemBuilder: (context, index) {
+                  if (index == 5 && hasMoreImages) {
+                    return _buildMoreImagesOverlay(
+                        limitedImages[5], images.length - 6, context, images);
+                  }
+                  return _buildImageItem(
+                      limitedImages[index], index, context, images);
+                },
+              );
+            },
+          ),
       ],
     );
   }
@@ -428,7 +480,8 @@ class PostCard extends StatelessWidget {
     return 3;
   }
 
-  Widget _buildImageItem(PostImage image, int index, BuildContext context, List<PostImage> images) {
+  Widget _buildImageItem(PostImage image, int index, BuildContext context,
+      List<PostImage> images) {
     return GestureDetector(
       onTap: () => _openImageGallery(images, index, context),
       child: ClipRRect(
@@ -447,7 +500,8 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMoreImagesOverlay(PostImage image, int extraCount, BuildContext context, List<PostImage> images) {
+  Widget _buildMoreImagesOverlay(PostImage image, int extraCount,
+      BuildContext context, List<PostImage> images) {
     return GestureDetector(
       onTap: () => _openImageGallery(images, 5, context),
       child: Stack(
@@ -470,7 +524,10 @@ class PostCard extends StatelessWidget {
           Center(
             child: Text(
               '+$extraCount',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
           ),
         ],
@@ -677,7 +734,8 @@ class PostCard extends StatelessWidget {
                             SizedBox(width: 6),
                             Text(
                               trip.init_date.toString(),
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 12),
                             ),
                           ],
                         )
@@ -690,7 +748,8 @@ class PostCard extends StatelessWidget {
                             SizedBox(width: 6),
                             Text(
                               trip.price.toString(),
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 12),
                             ),
                           ],
                         )
@@ -703,7 +762,8 @@ class PostCard extends StatelessWidget {
                             SizedBox(width: 6),
                             Text(
                               "${trip.locations.length} Destinations",
-                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 12),
                             ),
                           ],
                         )

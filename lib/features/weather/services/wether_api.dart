@@ -5,8 +5,10 @@ const String apiKey = '46c642bcc3f999e910d7dcfdd7e5e182';
 
 class WeatherApi {
   Future<Map<String, dynamic>?> fetchWeather(String cityName) async {
+    String trimCity = cityName.replaceAll(RegExp(r'\b(Province|City)\b', caseSensitive: false), '').trim();
+    print(trimCity);
     var url = Uri.parse(
-        'https://api.openweathermap.org/data/2.5/forecast?q=$cityName&appid=$apiKey&units=metric');
+        'https://api.openweathermap.org/data/2.5/forecast?q=$trimCity&appid=$apiKey&units=metric');
 
     try {
       var response = await http.get(url);
