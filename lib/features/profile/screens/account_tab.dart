@@ -5,6 +5,8 @@ import 'package:lokaloka/features/profile/services/profile_services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
+import '../../../globals.dart';
+
 // Widget thông báo tùy chỉnh
 class CustomNotification extends StatelessWidget {
   final String message;
@@ -98,7 +100,8 @@ class _AccountTabState extends State<AccountTab> {
     emailController = TextEditingController(text: widget.user.email);
     phoneController = TextEditingController(text: widget.user.phone);
     addressController = TextEditingController(text: widget.user.address);
-    emergencyController = TextEditingController(text: widget.user.emergency_numbers);
+    emergencyController =
+        TextEditingController(text: widget.user.emergency_numbers);
 
     _addChangeListeners();
   }
@@ -133,13 +136,12 @@ class _AccountTabState extends State<AccountTab> {
   void _checkForChanges() {
     if (!isEditing) return;
 
-    bool changed =
-        fullNameController.text != originalValues['fullName'] ||
-            dobController.text != originalValues['dob'] ||
-            genderController.text != originalValues['gender'] ||
-            phoneController.text != originalValues['phone'] ||
-            addressController.text != originalValues['address'] ||
-            emergencyController.text != originalValues['emergency'];
+    bool changed = fullNameController.text != originalValues['fullName'] ||
+        dobController.text != originalValues['dob'] ||
+        genderController.text != originalValues['gender'] ||
+        phoneController.text != originalValues['phone'] ||
+        addressController.text != originalValues['address'] ||
+        emergencyController.text != originalValues['emergency'];
 
     if (changed != hasChanges) {
       setState(() {
@@ -245,7 +247,8 @@ class _AccountTabState extends State<AccountTab> {
   Future<void> _selectDate() async {
     DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().subtract(Duration(days: 365 * 18)), // Mặc định 18 tuổi
+      initialDate: DateTime.now().subtract(Duration(days: 365 * 18)),
+      // Mặc định 18 tuổi
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
@@ -311,7 +314,8 @@ class _AccountTabState extends State<AccountTab> {
           hasChanges = false;
         });
       } else {
-        String errorMessage = 'An error occurred while updating your profile. Please try again later.';
+        String errorMessage =
+            'An error occurred while updating your profile. Please try again later.';
         showCustomNotification(
           context: context,
           notification: CustomNotification(
@@ -325,7 +329,8 @@ class _AccountTabState extends State<AccountTab> {
       showCustomNotification(
         context: context,
         notification: CustomNotification(
-          message: 'An error occurred while updating your profile. Please try again later.',
+          message:
+              'An error occurred while updating your profile. Please try again later.',
           isError: true,
         ),
       );
@@ -398,7 +403,9 @@ class _AccountTabState extends State<AccountTab> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: _buildDateField('Date of Birth', dobController, isEditing)),
+          Expanded(
+              child:
+                  _buildDateField('Date of Birth', dobController, isEditing)),
           SizedBox(width: 16), // Space between date and gender fields
           Expanded(child: _buildGenderField()),
         ],
@@ -415,13 +422,16 @@ class _AccountTabState extends State<AccountTab> {
         SizedBox(
           height: 50,
           child: DropdownButtonFormField<String>(
-            value: genderController.text.isNotEmpty ? genderController.text : null,
-            items: ['MALE', 'FEMALE', 'OTHER'].map((gender) {
+            value:
+                genderController.text.isNotEmpty ? genderController.text : null,
+            items: ['Male', 'Female', 'Other'].map((gender) {
               return DropdownMenuItem(value: gender, child: Text(gender));
             }).toList(),
-            onChanged: isEditing ? (value) {
-              setState(() => genderController.text = value ?? '');
-            } : null,
+            onChanged: isEditing
+                ? (value) {
+                    setState(() => genderController.text = value ?? '');
+                  }
+                : null,
             validator: validateGender,
             focusNode: genderFocus,
             decoration: InputDecoration(
@@ -435,7 +445,8 @@ class _AccountTabState extends State<AccountTab> {
     );
   }
 
-  Widget _buildDateField(String label, TextEditingController controller, bool enabled) {
+  Widget _buildDateField(
+      String label, TextEditingController controller, bool enabled) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -451,7 +462,10 @@ class _AccountTabState extends State<AccountTab> {
             decoration: InputDecoration(
               border: OutlineInputBorder(),
               contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              suffixIcon: enabled ? IconButton(icon: Icon(Icons.calendar_today), onPressed: _selectDate) : null,
+              suffixIcon: enabled
+                  ? IconButton(
+                      icon: Icon(Icons.calendar_today), onPressed: _selectDate)
+                  : null,
               errorStyle: TextStyle(color: Colors.red),
             ),
             readOnly: true,
@@ -462,15 +476,12 @@ class _AccountTabState extends State<AccountTab> {
     );
   }
 
-  Widget _buildFormField(
-      String label,
-      TextEditingController controller,
-      bool enabled,
-      bool isRequired,
+  Widget _buildFormField(String label, TextEditingController controller,
+      bool enabled, bool isRequired,
       {bool isPassword = false,
-        String? Function(String?)? validator,
-        FocusNode? focusNode,
-        TextInputType? keyboardType}) {
+      String? Function(String?)? validator,
+      FocusNode? focusNode,
+      TextInputType? keyboardType}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -493,7 +504,8 @@ class _AccountTabState extends State<AccountTab> {
               keyboardType: keyboardType,
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                contentPadding:
+                    EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 errorStyle: TextStyle(color: Colors.red),
               ),
             ),
@@ -507,9 +519,10 @@ class _AccountTabState extends State<AccountTab> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
-        width: double.infinity,
+        width: 350,
         height: 50,
         child: ElevatedButton(
+          key: Key("logout_button"),
           onPressed: _handleLogout,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.orangeColor,
@@ -519,7 +532,9 @@ class _AccountTabState extends State<AccountTab> {
               side: BorderSide(width: 0, color: Colors.white),
             ),
           ),
-          child: Text("Sign out", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          child: Text("Sign out",
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         ),
       ),
     );
@@ -550,8 +565,10 @@ class _AccountTabState extends State<AccountTab> {
               children: [
                 Expanded(
                   child: ElevatedButton(
+                    key: Key("cancel_logout_button"),
                     onPressed: () {
-                      Navigator.of(context).pop(false); // Return false when No is pressed
+                      Navigator.of(context)
+                          .pop(false); // Return false when No is pressed
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF78909C), // Gray color
@@ -573,8 +590,10 @@ class _AccountTabState extends State<AccountTab> {
                 SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
+                    key: Key("confirm_logout_button"),
                     onPressed: () {
-                      Navigator.of(context).pop(true); // Return true when Yes is pressed
+                      Navigator.of(context)
+                          .pop(true); // Return true when Yes is pressed
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF00BCD4), // Turquoise color
@@ -604,6 +623,13 @@ class _AccountTabState extends State<AccountTab> {
     if (confirmLogout == true) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.remove("auth_token");
+      travelDays = 0;
+      cityName = "";
+      trustPhone = "";
+      cityTrip = null;
+      images.clear();
+      userGlobal = UserNormal(
+          id: 1, name: "", email: "", full_name: "", address: "", avatar: "");
       if (mounted) {
         Navigator.pushReplacementNamed(context, "/login");
       }
@@ -615,67 +641,74 @@ class _AccountTabState extends State<AccountTab> {
       padding: const EdgeInsets.fromLTRB(30, 25, 30, 4),
       child: isEditing
           ? Row(
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  isEditing = false;
-                  hasChanges = false;
-                  _initializeControllers();
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(width: 0, color: Colors.white),
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        isEditing = false;
+                        hasChanges = false;
+                        _initializeControllers();
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(width: 0, color: Colors.white),
+                      ),
+                      minimumSize: Size(130, 50),
+                    ),
+                    child: Text("Cancel",
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
                 ),
-                minimumSize: Size(130, 50),
-              ),
-              child: Text("Cancel", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
-          SizedBox(width: 20),
-          Expanded(
-            child: isLoading
-                ? Center(child: CircularProgressIndicator())
-                : ElevatedButton(
-              onPressed: hasChanges ? _handleUpdate : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                disabledBackgroundColor: Colors.teal.withAlpha(120),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  side: BorderSide(width: 0, color: Colors.white),
+                SizedBox(width: 20),
+                Expanded(
+                  child: isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: hasChanges ? _handleUpdate : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            disabledBackgroundColor: Colors.teal.withAlpha(120),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(width: 0, color: Colors.white),
+                            ),
+                            minimumSize: Size(130, 50),
+                          ),
+                          child: Text("Save",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                        ),
                 ),
-                minimumSize: Size(130, 50),
-              ),
-              child: Text("Save", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      )
+              ],
+            )
           : SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
-          onPressed: () {
-            setState(() {
-              isEditing = true;
-              hasChanges = false;
-              _saveOriginalValues();
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey[800],
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              width: 350,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    isEditing = true;
+                    hasChanges = false;
+                    _saveOriginalValues();
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[800],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text("Update",
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
             ),
-          ),
-          child: Text("Update", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-      ),
     );
   }
 

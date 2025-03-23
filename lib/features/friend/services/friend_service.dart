@@ -272,7 +272,8 @@ class FriendService {
     try {
       final response = await ApiService().request(path: '/friends/cancel-request/$followedId', method: "DELETE", typeUrl: "baseUrl", currentPath: '');
       return response.statusCode == 200;
-    } catch (e) {
+    }
+    catch (e) {
       developer.log('Error in deleteFriendRequest: $e');
       throw Exception('Error: $e');
     }

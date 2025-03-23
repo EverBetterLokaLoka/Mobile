@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user != null) {
       setState(() {
         trustPhone = user?.emergency_numbers;
-        userGlobal = user;
+        userGlobal = user!;
       });
     }
   }
@@ -53,7 +53,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void getCity() async {
     String? city = await LocationService.getCurrentCity();
     if (city != null) {
-      cityName = city;
+      setState(() {
+        cityName = city;
+      });
       print("Thành phố hiện tại: $city");
     } else {
       print("Không thể lấy thành phố.");
@@ -174,8 +176,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: AppBarCustom(),
       floatingActionButton: Container(
-        width: 65,
-        height: 65,
+        width: 80,
+        height: 80,
         child: FloatingActionButton(
           backgroundColor: Colors.orange,
           shape: CircleBorder(),

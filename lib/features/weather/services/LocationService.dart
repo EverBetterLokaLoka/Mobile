@@ -79,6 +79,28 @@ class LocationService {
 
     return coordinates;
   }
+  // static Future<List<LatLng>> getCoordinatesFromAddresses(List<String> places, String city) async {
+  //   List<LatLng> coordinates = [];
+  //
+  //   for (String place in places) {
+  //     final String query = "$place, $city, Viet Nam";
+  //     final url = "https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json";
+  //
+  //     final response = await http.get(Uri.parse(url), headers: {
+  //       "User-Agent": "lokaloka (lokaloka@gmail.com)"
+  //     });
+  //
+  //     if (response.statusCode == 200) {
+  //       final data = jsonDecode(response.body);
+  //       if (data.isNotEmpty) {
+  //         double lat = double.parse(data[0]['lat']);
+  //         double lon = double.parse(data[0]['lon']);
+  //         coordinates.add(LatLng(lat, lon));
+  //       }
+  //     }
+  //   }
+  //   return coordinates;
+  // }
 
   Future<String> getAddressesFromItinerary(
       Map<String, dynamic> jsonData) async {

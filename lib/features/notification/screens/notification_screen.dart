@@ -4,6 +4,8 @@ import 'package:lokaloka/features/notification/services/notification_service.dar
 import 'package:lokaloka/features/notification/models/notification_model.dart';
 import 'package:lokaloka/features/notification/widgets/notification_item.dart';
 
+import '../../../widgets/app_bar_widget.dart';
+
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({Key? key}) : super(key: key);
 
@@ -221,6 +223,27 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: AppBarCustom(),
+      floatingActionButton: Container(
+        width: 80,
+        height: 80,
+        child: FloatingActionButton(
+          backgroundColor: Colors.orange,
+          shape: CircleBorder(),
+          onPressed: () {
+            Navigator.pushNamed(context, "/create-itinerary");
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: 32, color: Colors.white),
+              Text("Itinerary",
+                  style: TextStyle(fontSize: 12, color: Colors.white)),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null

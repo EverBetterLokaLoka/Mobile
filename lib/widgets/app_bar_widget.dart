@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../core/styles/colors.dart';
-import '../features/notification/screens/notification_screen.dart';
 import 'menu_widget.dart';
 
 class AppBarCustom extends StatelessWidget {
@@ -27,9 +26,7 @@ class AppBarCustom extends StatelessWidget {
             _buildNavItem(
                 Icons.map, '/my-trip', context, "My Trip", currentRoute),
             SizedBox(width: 40),
-            _buildNavItem(Icons.notifications, '/notification', context,
-                "Notification", currentRoute,
-                screen: NotificationScreen()),
+            _buildNavItem(Icons.notifications, '/notification', context,"Notification" ,currentRoute),
             _buildNavItem(Icons.menu, '/menu', context, "Menu", currentRoute,
                 screen: Menu()),
           ],
@@ -50,33 +47,32 @@ Widget _buildNavItem(IconData icon, String route, BuildContext context,
     children: [
       IconButton(
         icon: Icon(icon, color: color, size: 30),
-        onPressed: () {
-          String? currentRoute0 = ModalRoute.of(context)?.settings.name;
-          if (currentRoute0 == route) {
-            return;
-          }
+          onPressed: () {
+            if (currentRoute == route) {
+              return;
+            }
 
-          if (screen != null) {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => screen,
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(1.0, 0.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeInOut;
-                  var tween = Tween(begin: begin, end: end)
-                      .chain(CurveTween(curve: curve));
-                  return SlideTransition(
-                      position: animation.drive(tween), child: child);
-                },
-              ),
-            );
-          } else {
-            Navigator.pushNamed(context, route);
+            if (screen != null) {
+              Navigator.pushReplacement(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => screen,
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(1.0, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeInOut;
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
+                    return SlideTransition(
+                        position: animation.drive(tween), child: child);
+                  },
+                ),
+              );
+            } else {
+              Navigator.pushReplacementNamed(context, route);
+            }
           }
-        },
       ),
       Text(label,
           style: TextStyle(

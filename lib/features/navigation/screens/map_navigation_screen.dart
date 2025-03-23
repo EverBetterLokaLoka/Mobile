@@ -1,17 +1,13 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:lokaloka/globals.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/styles/colors.dart';
+import '../../../core/utils/format_text.dart';
 import '../../itinerary/widgets/itinerary-app_bar.dart';
 import '../../moments/screens/moment_screen.dart';
 import '../services/navigation_api.dart';
@@ -42,15 +38,13 @@ class _MapScreenState extends State<MapNavigationScreen> {
   bool isNavigating = false;
   int currentStep = 0;
   StreamSubscription<Position>? positionStream;
-  File? _capturedImage;
-  BitmapDescriptor? _customMarkerIcon;
   BitmapDescriptor? userIcon;
-  Map<String, File?> _locationImages = {};
-  File? imageFile;
   int? _selectedIndex;
   Marker? newMarker;
   List<LatLng> locations = [];
   List<String> locationNames = [];
+  bool isLoading = false;
+  bool isPopupShown = false;
 
   @override
   void initState() {
@@ -61,6 +55,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
   }
 
   Future<void> _getCurrentLocation() async {
+    setState(() => isLoading = true);
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       print("GPS chưa bật!");
@@ -93,13 +88,14 @@ class _MapScreenState extends State<MapNavigationScreen> {
     });
 
     _fetchRoute();
+    setState(() => isLoading = false);
   }
 
   Future<void> _fetchRoute() async {
     if (currentLocation == null) return;
 
     var result =
-        await NavigationApi().getRouteFromGraphHopper(locations, apiKey);
+    await NavigationApi().getRouteFromGraphHopper(locations, apiKey);
     List<LatLng> routePoints = result["route"];
     List<String> instructions = result["instructions"];
 
@@ -133,7 +129,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
     positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.best, distanceFilter: 5),
-    ).listen((Position position) {
+    ).listen((Position position) async {
       if (!isNavigating) return;
 
       LatLng newPosition = LatLng(position.latitude, position.longitude);
@@ -145,13 +141,15 @@ class _MapScreenState extends State<MapNavigationScreen> {
           markerId: const MarkerId("user_location"),
           position: newPosition,
           icon: BitmapDescriptor.defaultMarker,
-          infoWindow: const InfoWindow(title: "Vị trí của bạn"),
+          infoWindow: const InfoWindow(title: "Your location"),
         );
       });
 
       mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(newPosition, 18),
       );
+
+      await _fetchRoute();
     });
   }
 
@@ -163,7 +161,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
   }
 
   void _setMapBounds() {
-    if (locations.isEmpty || mapController == null) return;
+    if (locations.length < 2) return;
 
     LatLngBounds bounds = _getBounds(locations);
 
@@ -187,90 +185,6 @@ class _MapScreenState extends State<MapNavigationScreen> {
       southwest: LatLng(minLat, minLng),
       northeast: LatLng(maxLat, maxLng),
     );
-  }
-
-  Future<void> _captureImage(int index) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.camera);
-
-    if (image != null) {
-      setState(() {
-        imageFile = File('assets/capture');
-        _locationImages[locations[index].toString()] = imageFile;
-        imageFile = File(image.path);
-        print("Ảnh đã lưu cho vị trí ${locations[index]}: ${imageFile?.path}");
-        print("imageFile$imageFile");
-        print("_locationImages${_locationImages[locations[index].toString()]}");
-        _updateMarkerWithImage(_selectedIndex!, imageFile!);
-      });
-    }
-  }
-
-  Future<void> _askCapture(int index) async {
-    bool? shouldCapture = await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Chụp ảnh?"),
-          content:
-              const Text("Bạn có muốn chụp ảnh để lưu tại địa điểm này không?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text("Hủy"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text("Chụp ảnh"),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldCapture == true) {
-      await _captureImage(index);
-      setState(() {});
-    }
-  }
-
-  Future<void> _updateMarkerWithImage(int index, File imageFile) async {
-    List<int> compressedBytes = await FlutterImageCompress.compressWithFile(
-          imageFile.absolute.path,
-          quality: 50,
-          minWidth: 400,
-          minHeight: 400,
-        ) ??
-        [];
-
-    if (compressedBytes.isNotEmpty) {
-      final Uint8List uint8List = Uint8List.fromList(compressedBytes);
-      final BitmapDescriptor bitmap = BitmapDescriptor.fromBytes(uint8List);
-
-      newMarker = Marker(
-        markerId: MarkerId(locations[index].toString()),
-        position: locations[index],
-        icon: bitmap,
-        infoWindow: InfoWindow(
-          title: locationNames[index],
-          snippet:
-              "Vĩ độ: ${locations[index].latitude}, Kinh độ: ${locations[index].longitude}",
-        ),
-      );
-
-      setState(() {
-        markers
-            .removeWhere((m) => m.markerId.value == newMarker!.markerId.value);
-        markers.add(newMarker!);
-      });
-
-      print("Danh sách markers sau khi cập nhật: $markers");
-
-      print("Đã cập nhật marker có ảnh cho vị trí ${locations[index]}.");
-    } else {
-      print("Lỗi khi nén ảnh!");
-    }
-    setState(() {});
   }
 
   void _showCompletionPopup(BuildContext context) {
@@ -347,14 +261,23 @@ class _MapScreenState extends State<MapNavigationScreen> {
   @override
   void dispose() {
     positionStream?.cancel();
+    _stopNavigation();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
     return Scaffold(
-      appBar: ItineraryAppBar(
-        titleText: widget.title ?? "Navigation Map",
+      appBar: AppBar(
+        title: Text(formatTitle(widget.title!) ?? 'Travel Itinerary'),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: Stack(
         children: [
@@ -368,10 +291,20 @@ class _MapScreenState extends State<MapNavigationScreen> {
                       onMapCreated: (controller) {
                         mapController = controller;
                         _setMapBounds();
+
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (locations.length > 1) {
+                            Future.delayed(Duration(milliseconds: 500), () {
+                              for (LatLng position in locations) {
+                                mapController?.showMarkerInfoWindow(MarkerId(position.toString()));
+                              }
+                            });
+                          }
+                        });
                       },
                       mapType: MapType.terrain,
                       initialCameraPosition: CameraPosition(
-                        target: locations[0],
+                        target: locations.isNotEmpty ? locations[0] : const LatLng(0, 0),
                         zoom: 12,
                       ),
                       markers: {
@@ -382,15 +315,9 @@ class _MapScreenState extends State<MapNavigationScreen> {
                             markerId: MarkerId(position.toString()),
                             position: position,
                             infoWindow: InfoWindow(
-                              title: locationNames[index],
-                              snippet:
-                                  "Vĩ độ: ${position.latitude}, Kinh độ: ${position.longitude}",
+                              title: "Location ${index + 1}: ${locationNames[index]}",
+                              snippet: "Lat: ${position.latitude}, Lng: ${position.longitude}",
                             ),
-                            onTap: () {
-                              setState(() {
-                                _selectedIndex = index;
-                              });
-                            },
                           );
                         }).toSet(),
                       },
@@ -458,8 +385,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
                           controller: scrollController,
                           itemCount: _instructions.length,
                           itemBuilder: (context, index) {
-                            String instruction =
-                                _instructions[index].toLowerCase();
+                            String instruction = _instructions[index].toLowerCase();
 
                             IconData getIcon(String instruction) {
                               if (instruction.contains("turn right")) {
@@ -474,40 +400,27 @@ class _MapScreenState extends State<MapNavigationScreen> {
                                 return Icons.turn_slight_right;
                               } else if (instruction.contains("continue")) {
                                 return Icons.straight;
-                              } else if (instruction
-                                  .contains("at roundabout")) {
+                              } else if (instruction.contains("at roundabout")) {
                                 return Icons.roundabout_right;
-                              } else if (instruction
-                                  .contains("arrive at destination")) {
+                              } else if (instruction.contains("arrive at destination")) {
                                 return Icons.flag;
                               } else {
                                 return Icons.directions;
                               }
                             }
+
                             if (index == currentStep &&
-                                instruction.contains("Waypoint 1")) {
+                                !isPopupShown &&
+                                (instruction.contains("waypoint 1") ||
+                                    instruction.contains("waypoint 2") ||
+                                    instruction.contains("waypoint 3") ||
+                                    instruction.contains("arrive at destination"))) {
+                              isPopupShown = true;
                               Future.delayed(Duration(milliseconds: 300), () {
                                 _showCompletionPopup(context);
                               });
                             }
-                            if (index == currentStep &&
-                                instruction.contains("Waypoint 2")) {
-                              Future.delayed(Duration(milliseconds: 300), () {
-                                _showCompletionPopup(context);
-                              });
-                            }
-                            if (index == currentStep &&
-                                instruction.contains("Waypoint 3")) {
-                              Future.delayed(Duration(milliseconds: 300), () {
-                                _showCompletionPopup(context);
-                              });
-                            }
-                            if (index == currentStep &&
-                                instruction.contains("Arrive at destination")) {
-                              Future.delayed(Duration(milliseconds: 300), () {
-                                _showCompletionPopup(context);
-                              });
-                            }
+
                             return ListTile(
                               leading: Icon(getIcon(instruction)),
                               title: Text(
@@ -515,9 +428,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
                                     ? "**${_instructions[index]}** (Going...)"
                                     : _instructions[index],
                                 style: TextStyle(
-                                  fontWeight: index == currentStep
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
+                                  fontWeight: index == currentStep ? FontWeight.bold : FontWeight.normal,
                                 ),
                               ),
                             );

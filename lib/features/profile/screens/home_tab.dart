@@ -404,7 +404,7 @@ class _HomeTabState extends State<HomeTab> {
                   ],
                 ),
                 PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert),
+                  icon: Icon(Icons.more_horiz_outlined),
                   itemBuilder: (BuildContext context) {
                     return [
                       const PopupMenuItem<String>(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lokaloka/features/auth/models/user.dart';
 import 'package:lokaloka/features/moments/screens/create_moment_screen.dart';
@@ -9,7 +10,9 @@ import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 
 import '../../itinerary/models/Itinerary.dart';
+import '../../itinerary/screens/detail_itinerary_screen.dart';
 import '../../itinerary/services/itinerary_api.dart';
+import '../../navigation/screens/map_navigation_screen.dart';
 import '../models/Feeling.dart';
 
 class MomentsScreen extends StatefulWidget {
@@ -26,6 +29,8 @@ class _MomentsScreenState extends State<MomentsScreen> {
   bool _isLoadingItinerary = true;
   Feeling? selectedFeeling;
   Map<int, Itinerary>? _itineraryByPost = {};
+  List<String> locationNames = [];
+  List<LatLng> locations = [];
 
   @override
   void initState() {
@@ -43,7 +48,7 @@ class _MomentsScreenState extends State<MomentsScreen> {
     try {
       _currentUser = await _profileService.getUserProfile();
       _posts = await _profileService.fetchAllPosts();
-      await fetchItineraryByPost(); // Đảm bảo chờ lấy itinerary
+      await fetchItineraryByPost();
     } catch (e) {
       print('Error loading data: $e');
     } finally {
@@ -368,7 +373,7 @@ class PostCard extends StatelessWidget {
                   ),
                 if (itineraryByPost.containsKey(post.id) &&
                     itineraryByPost[post.id] != null)
-                  _buildTripCard(itineraryByPost[post.id]!),
+                  _buildTripCard(context, itineraryByPost[post.id]!),
                 if (post.images.isNotEmpty)
                   _buildImageGrid(post.images, context),
                 Divider(height: 10),
@@ -389,74 +394,149 @@ class PostCard extends StatelessWidget {
 
     return Column(
       children: [
-        SizedBox(height: 5,),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 5,
-            mainAxisSpacing: 5,
-          ),
-          itemCount: hasMoreImages ? 6 : limitedImages.length,
-          itemBuilder: (context, index) {
-            if (index == 5 && hasMoreImages) {
-              return GestureDetector(
-                onTap: () {
-                  _openImageGallery(images, 5, context);
-                },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(0),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(
-                        limitedImages[5].content,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[300],
-                            child:
-                                Center(child: Icon(Icons.image_not_supported)),
-                          );
-                        },
-                      ),
-                      Container(color: Colors.black54),
-                      Center(
-                        child: Text(
-                          '+${images.length - 6}',
-                          style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-            return GestureDetector(
-              onTap: () {
-                _openImageGallery(images, index, context);
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(0),
-                child: Image.network(
-                  limitedImages[index].content,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[300],
-                      child: Center(child: Icon(Icons.image_not_supported)),
-                    );
-                  },
-                ),
+        SizedBox(height: 5),
+        if (limitedImages.length == 3)
+          _buildSpecialLayout(limitedImages, context)
+        else
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: _getCrossAxisCount(images.length),
+                crossAxisSpacing: 5,
+                mainAxisSpacing: 5,
               ),
+              itemCount: hasMoreImages ? 6 : limitedImages.length,
+              itemBuilder: (context, index) {
+                if (index == 5 && hasMoreImages) {
+                  return _buildMoreImagesOverlay(limitedImages[5], images.length - 6, context, images);
+                }
+                return _buildImageItem(limitedImages[index], index, context, images);
+              },
             );
           },
         ),
       ],
+    );
+  }
+
+  int _getCrossAxisCount(int length) {
+    if (length == 1) return 1;
+    if (length == 2) return 2;
+    return 3;
+  }
+
+  Widget _buildImageItem(PostImage image, int index, BuildContext context, List<PostImage> images) {
+    return GestureDetector(
+      onTap: () => _openImageGallery(images, index, context),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(0),
+        child: Image.network(
+          image.content,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.grey[300],
+              child: Center(child: Icon(Icons.image_not_supported)),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreImagesOverlay(PostImage image, int extraCount, BuildContext context, List<PostImage> images) {
+    return GestureDetector(
+      onTap: () => _openImageGallery(images, 5, context),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(0),
+            child: Image.network(
+              image.content,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[300],
+                  child: Center(child: Icon(Icons.image_not_supported)),
+                );
+              },
+            ),
+          ),
+          Container(color: Colors.black54),
+          Center(
+            child: Text(
+              '+$extraCount',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialLayout(List<PostImage> images, BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 5 / 5,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: GestureDetector(
+              onTap: () => _openImageGallery(images, 0, context),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(0),
+                child: Image.network(
+                  images[0].content,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: 340,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 5),
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _openImageGallery(images, 1, context),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(0),
+                      child: Image.network(
+                        images[1].content,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 150,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 5),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _openImageGallery(images, 2, context),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(0),
+                      child: Image.network(
+                        images[2].content,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 150,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -531,97 +611,108 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTripCard(Itinerary trip) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 10, 2, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: trip.locations.isNotEmpty
-                ? Image.network(
-                    trip.locations
-                            .firstWhere(
-                              (location) =>
-                                  location.image != null &&
-                                  location.image!.isNotEmpty,
-                            )
-                            .image ??
-                        '',
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.grey[300],
-                        child: Icon(Icons.image, color: Colors.grey),
-                      );
-                    },
-                  )
-                : Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[300],
-                    child: Icon(Icons.image, color: Colors.grey),
-                  ),
+  Widget _buildTripCard(BuildContext context, Itinerary trip) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailItineraryScreen(
+                itineraryItems: trip, title: trip.title, type: 'view'),
           ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  trip.title ?? '',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 4),
-                trip.init_date != null
-                    ? Row(
-                        children: [
-                          Icon(Icons.calendar_today,
-                              size: 16, color: Colors.grey),
-                          SizedBox(width: 6),
-                          Text(
-                            trip.init_date.toString(),
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      )
-                    : SizedBox(),
-                trip.price != null
-                    ? Row(
-                        children: [
-                          Icon(Icons.attach_money,
-                              size: 16, color: Colors.grey),
-                          SizedBox(width: 6),
-                          Text(
-                            trip.price.toString(),
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      )
-                    : SizedBox(),
-                SizedBox(height: 4),
-                trip.locations.isNotEmpty
-                    ? Row(
-                        children: [
-                          Icon(Icons.place, size: 16, color: Colors.grey),
-                          SizedBox(width: 6),
-                          Text(
-                            "${trip.locations.length} Destinations",
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      )
-                    : SizedBox(),
-              ],
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 10, 2, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: trip.locations.isNotEmpty
+                  ? Image.network(
+                      trip.locations
+                              .firstWhere(
+                                (location) =>
+                                    location.image != null &&
+                                    location.image!.isNotEmpty,
+                              )
+                              .image ??
+                          '',
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child: Icon(Icons.image, color: Colors.grey),
+                        );
+                      },
+                    )
+                  : Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: Icon(Icons.image, color: Colors.grey),
+                    ),
             ),
-          ),
-        ],
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    trip.title ?? '',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  trip.init_date != null
+                      ? Row(
+                          children: [
+                            Icon(Icons.calendar_today,
+                                size: 16, color: Colors.grey),
+                            SizedBox(width: 6),
+                            Text(
+                              trip.init_date.toString(),
+                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ],
+                        )
+                      : SizedBox(),
+                  trip.price != null
+                      ? Row(
+                          children: [
+                            Icon(Icons.attach_money,
+                                size: 16, color: Colors.grey),
+                            SizedBox(width: 6),
+                            Text(
+                              trip.price.toString(),
+                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ],
+                        )
+                      : SizedBox(),
+                  SizedBox(height: 4),
+                  trip.locations.isNotEmpty
+                      ? Row(
+                          children: [
+                            Icon(Icons.place, size: 16, color: Colors.grey),
+                            SizedBox(width: 6),
+                            Text(
+                              "${trip.locations.length} Destinations",
+                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ],
+                        )
+                      : SizedBox(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
