@@ -344,15 +344,27 @@ class NotificationService extends ChangeNotifier {
     }
 
     try {
-      FriendService _friend = FriendService();
-      bool success = await _friend.addFriend(notification.friendId!);
+      FriendService friend = FriendService();
+      if(accepted){
+        bool success = await friend.addFriend(notification.friendId!);
 
-      if (success) {
-        print('✅ Friend request ${accepted ? "accepted" : "rejected"} successfully');
-      } else {
-        print('❌ Error responding to friend request');
-        throw Exception('Failed to respond to friend request');
+        if (success) {
+          print('✅ Friend request ${accepted ? "accepted" : "rejected"} successfully');
+        } else {
+          print('❌ Error responding to friend request');
+          throw Exception('Failed to respond to friend request');
+        }
+      }else{
+        String notifiId = notification.friendId.toString();
+        bool reject = await friend.removeFriend(notifiId);
+        if (reject) {
+          print('✅ Friend request rejected successfully');
+        } else {
+          print('❌ Error responding to friend request');
+          throw Exception('Failed to respond to friend request');
+        }
       }
+
     } catch (e) {
       print('❌ Exception responding to friend request: $e');
       rethrow;

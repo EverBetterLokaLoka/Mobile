@@ -685,6 +685,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         postData['itineraryId'] = itinerary.id;
       } catch (e) {
         print('Error parsing itinerary: $e');
+        // Tiếp tục mà không có itinerary
       }
     }
 

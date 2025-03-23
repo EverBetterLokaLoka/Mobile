@@ -164,7 +164,7 @@ class _LoginState extends State<Login> {
                         ]),
                         const SizedBox(height: 5),
                         TextFormField(
-                          key: const Key('email_field'),
+                          key: Key('email_field'),
                           controller: _emailController,
                           decoration: InputDecoration(
                             hintText: "Enter your email",

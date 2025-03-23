@@ -7,7 +7,6 @@ class NotificationItem extends StatelessWidget {
   final Function(int, bool) onFriendRequestAction;
   final Function(int) onMarkAsRead;
   final Function(int) onDelete;
-  final Function(NotificationModel) onTap;
 
   const NotificationItem({
     Key? key,
@@ -15,7 +14,6 @@ class NotificationItem extends StatelessWidget {
     required this.onFriendRequestAction,
     required this.onMarkAsRead,
     required this.onDelete,
-    required this.onTap,
   }) : super(key: key);
 
   String _formatTimestamp(DateTime timestamp) {
@@ -72,6 +70,31 @@ class NotificationItem extends StatelessWidget {
   }
 
   Widget _buildFriendRequestActions() {
+    // Check if the notification has been read, which indicates the request has been handled
+    if (notification.isRead) {
+      // Check if we have data about the action taken
+      final String actionMessage = notification.data != null &&
+          notification.data!['requestAccepted'] != null ?
+      (notification.data!['requestAccepted'] == true ?
+      'Friend request accepted' :
+      'Friend request rejected') :
+      'Request processed';
+
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          actionMessage,
+          style: TextStyle(
+            color: notification.data != null &&
+                notification.data!['requestAccepted'] == true ?
+            Colors.green : Colors.grey,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    // If not read, show the action buttons
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -111,7 +134,6 @@ class NotificationItem extends StatelessWidget {
       child: InkWell(
         onTap: () {
           onMarkAsRead(notification.id);
-          onTap(notification);
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -173,3 +195,4 @@ class NotificationItem extends StatelessWidget {
     );
   }
 }
+

@@ -645,8 +645,7 @@ class _MyTripState extends State<MyTripScreen> {
                           Icon(Icons.place, size: 16, color: Colors.grey),
                           SizedBox(width: 6),
                           Text('${trip['locations']?.length ?? 0} Destinations',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 12)),
+                              style: TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                     ],

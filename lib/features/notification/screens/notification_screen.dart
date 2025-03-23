@@ -107,81 +107,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  void _handleNotificationTap(NotificationModel notification) {
-    // Mark as read
-    _notificationService.markAsRead(notification.id);
-
-    // Handle different notification types
-    switch (notification.type) {
-      case 'FRIEND_REQUEST':
-      // Show friend request details
-        showDialog(
-          context: context,
-          builder: (context) {
-            bool isHandled = false; // Local state for handling button visibility
-
-            return StatefulBuilder(
-              builder: (context, setState) {
-                return AlertDialog(
-                  title: Text('Friend Request'),
-                  content: Text(notification.body),
-                  actions: [
-                    if (!isHandled) ...[
-                      TextButton(
-                        onPressed: () {
-                          _handleFriendRequestAction(notification.id, false);
-                          setState(() {
-                            isHandled = true; // Disable buttons when one is pressed
-                          });
-                        },
-                        child: Text('Reject', style: TextStyle(color: Colors.red)),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          _handleFriendRequestAction(notification.id, true);
-                          setState(() {
-                            isHandled = true; // Disable buttons when one is pressed
-                          });
-                        },
-                        child: Text('Accept', style: TextStyle(color: Colors.green)),
-                      ),
-                    ] else ...[
-                      Text(
-                        'Request already handled.',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        );
-        break;
-      case 'SYSTEM':
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(notification.title),
-            content: Text(notification.body),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-        );
-        break;
-      default:
-        break;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -292,7 +217,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
             onDelete: (id) {
               _notificationService.deleteNotification(id);
             },
-            onTap: _handleNotificationTap,
           );
         },
       ),
