@@ -103,7 +103,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => MomentsScreen()),
-                (route) => route.settings.name == "/home",
+            (route) => route.settings.name == "/home",
           );
         } else {
           Navigator.pop(context, true);
@@ -259,40 +259,79 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundImage: NetworkImage(widget.userAvatar!),
-                          ),
-                          SizedBox(width: 12),
-                          Column(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          double availableWidth = constraints.maxWidth - 100;
+
+                          TextPainter textPainter = TextPainter(
+                            text: TextSpan(
+                              text: "is feeling ${selectedFeeling?.name ?? ''}",
+                              style: TextStyle(fontSize: 14),
+                            ),
+                            maxLines: 1,
+                            textDirection: TextDirection.ltr,
+                          )..layout(maxWidth: availableWidth);
+
+                          bool shouldBreakLine = textPainter.didExceedMaxLines;
+
+                          return Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "${widget.userName}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundImage: NetworkImage(widget.userAvatar!),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${widget.userName}",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    if (selectedFeeling != null)
+                                      shouldBreakLine
+                                          ? Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Text(
+                                                "is feeling ${selectedFeeling!.name} ",
+                                                style: TextStyle(fontSize: 14),
+                                              ),
+                                              Text(
+                                                selectedFeeling!.emoji,
+                                                style: TextStyle(fontSize: 20),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                          : Row(
+                                        children: [
+                                          SizedBox(width: 4),
+                                          Text(
+                                            "is feeling ${selectedFeeling!.name} ",
+                                            style: TextStyle(fontSize: 14),
+                                          ),
+                                          Text(
+                                            selectedFeeling!.emoji,
+                                            style: TextStyle(fontSize: 20),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
                                 ),
-                              )
+                              ),
                             ],
-                          ),
-                          if (selectedFeeling != null)
-                            Row(
-                              children: [
-                                SizedBox(width: 4),
-                                Text(
-                                  "is feeling ${selectedFeeling!.name} ",
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                Text(
-                                  selectedFeeling!.emoji,
-                                  style: TextStyle(fontSize: 20),
-                                ),
-                              ],
-                            ),
-                        ],
+                          );
+                        },
                       ),
                     ),
                     Expanded(
@@ -679,7 +718,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       } catch (e) {
         print('Error parsing itinerary: $e');
       }
-    }else if(widget.shareItinerary != null){
+    } else if (widget.shareItinerary != null) {
       try {
         Itinerary itinerary = Itinerary.fromJson(widget.shareItinerary!);
         postData['itineraryId'] = itinerary.id;

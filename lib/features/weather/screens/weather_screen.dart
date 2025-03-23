@@ -75,6 +75,18 @@ class _WeatherScreenState extends State<WeatherScreen> {
         };
         isLoading = false;
       });
+    }else{
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error while getting your location weather! Please try again."),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        "/home",
+            (route) => false,
+      );
     }
   }
 
@@ -99,6 +111,18 @@ class _WeatherScreenState extends State<WeatherScreen> {
         };
         isLoading = false;
       });
+    }else{
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error while getting your location weather! Please try again."),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        "/home",
+            (route) => false,
+      );
     }
   }
 
@@ -116,6 +140,18 @@ class _WeatherScreenState extends State<WeatherScreen> {
         imageUrl = image_url;
         isLoading = false;
       });
+    }else{
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error while getting your location weather! Please try again."),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        "/home",
+            (route) => false,
+      );
     }
   }
 
@@ -152,13 +188,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
           title: Text("Enter city name"),
           content: TypeAheadField<Map<String, String>>(
             suggestionsCallback: (search) async {
-              var results = _filterLocations(search);
-              print("Suggestions: $results");
-              return results;
+              return _filterLocations(search);
             },
             builder: (context, controller, focusNode) {
+              _textEditingController = controller;
               return TextFormField(
-                controller: cityController,
+                controller: controller,
                 focusNode: focusNode,
                 decoration: InputDecoration(
                   labelText: 'Where to?',
@@ -166,8 +201,14 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   prefixIcon: Icon(Icons.location_on),
                 ),
                 validator: (value) {
+                  final isValid = _locations.any((location) =>
+                  location['name']?.toString().toLowerCase() ==
+                      value?.toLowerCase());
+                  if (!isValid) {
+                    return 'Please choose valid province.';
+                  }
                   if (_selectedLocation == null) {
-                    return 'Please select a destination';
+                    return 'Destination is required.';
                   }
                   return null;
                 },
@@ -189,8 +230,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
               child: Text("Cancel"),
             ),
             TextButton(
-              onPressed: () {
-                String city = cityController.text.trim();
+              onPressed: () async {
+                String city = _selectedLocation!;
                 if (city.isNotEmpty) {
                   cityName = city;
                   fetchWeather(city);

@@ -488,10 +488,10 @@ class _MyTripState extends State<MyTripScreen> {
       appBar: AppBar(
         title: const Text('Travel Itinerary'),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        // leading: IconButton(
+        //   icon: const Icon(Icons.arrow_back),
+        //   onPressed: () => Navigator.pop(context),
+        // ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -668,40 +668,52 @@ class _MyTripState extends State<MyTripScreen> {
                             _deleteItinerary(trip);
                           }
                         },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: 'share',
-                            child: Row(
-                              children: [
-                                Icon(Icons.share, color: Colors.black),
-                                SizedBox(width: 10),
-                                Text('Share'),
-                              ],
+                        itemBuilder: (context) {
+                          List<PopupMenuEntry<String>> menuItems = [];
+                          if (selectedTab != 1) {
+                            menuItems.add(
+                              PopupMenuItem(
+                                value: 'share',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.share, color: Colors.black),
+                                    SizedBox(width: 10),
+                                    Text('Share'),
+                                  ],
+                                ),
+                              ),
+                            );
+
+                            menuItems.add(
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete, color: Colors.red),
+                                    SizedBox(width: 10),
+                                    Text('Delete', style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          // Luôn hiển thị View
+                          menuItems.add(
+                            PopupMenuItem(
+                              value: 'view',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.remove_red_eye, color: AppColors.primaryColor),
+                                  SizedBox(width: 10),
+                                  Text('View'),
+                                ],
+                              ),
                             ),
-                          ),
-                          PopupMenuItem(
-                            value: 'view',
-                            child: Row(
-                              children: [
-                                Icon(Icons.remove_red_eye,
-                                    color: AppColors.primaryColor),
-                                SizedBox(width: 10),
-                                Text('View'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, color: Colors.red),
-                                SizedBox(width: 10),
-                                Text('Delete',
-                                    style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
+                          );
+
+                          return menuItems;
+                        },
                         child: Icon(Icons.more_horiz_outlined,
                             color: Colors.black),
                       ),

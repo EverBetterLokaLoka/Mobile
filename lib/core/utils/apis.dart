@@ -6,7 +6,7 @@ import '../constants/url_constant.dart';
 class ApiService {
   final String baseUrl = 'https://8fbe-14-174-105-39.ngrok-free.app/api';
 
-  final String imgKey = "a8d039369e128afd3c43347899b10bddd93de273";
+  final String imgKey = "b46d53d5f3a5255d471fad16a49e3b96b15c6757";
 
   final String locationUrl = 'https://provinces.open-api.vn/api/p';
 

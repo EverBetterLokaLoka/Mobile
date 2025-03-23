@@ -8,7 +8,6 @@ import 'package:lokaloka/globals.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/format_text.dart';
-import '../../itinerary/widgets/itinerary-app_bar.dart';
 import '../../moments/screens/moment_screen.dart';
 import '../services/navigation_api.dart';
 
@@ -33,7 +32,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
   Set<Marker> markers = {};
   Marker? userMarker;
   List<String> _instructions = [];
-  String apiKey = "087f9f85-d3ed-4565-94da-bbe55971cf88";
+  String apiKey = "52dae9b3-7a54-4a17-ae46-417c34e7be4a";
   LatLng? currentLocation;
   bool isNavigating = false;
   int currentStep = 0;
@@ -41,17 +40,40 @@ class _MapScreenState extends State<MapNavigationScreen> {
   BitmapDescriptor? userIcon;
   int? _selectedIndex;
   Marker? newMarker;
-  List<LatLng> locations = [];
-  List<String> locationNames = [];
+  List<LatLng> locations = [
+    LatLng(16.061585909038048, 108.24093957070255),
+    LatLng(16.06190659908386, 108.24216611124919),
+    LatLng(16.0614772285293, 108.24238152031026),
+    LatLng(16.061573737529518, 108.24165141566834)
+  ];
+  List<String> locationNames = [
+    "Back gate of College of Food and Foodstuff",
+    "Duy Tung Hotel Danang",
+    "Electricity, Water - Khai Phuong Mechanical",
+    "Go to Pottery"
+  ];
   bool isLoading = false;
   bool isPopupShown = false;
+  List<String> waypoints = [
+    "waypoint 1",
+    "waypoint 2",
+    "waypoint 3",
+    "arrive at destination"
+  ];
+  List<bool> waypointCompleted = [];
+  Set<Polyline> completedPolylines = {};
+  Set<Polyline> upcomingPolylines = {};
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
-    locations = widget.locations;
-    locationNames = widget.locationNames;
+    waypointCompleted = List<bool>.filled(locations.length, false);
+    waypointCompleted[0] = true;
+    completedPolylines.clear();
+    upcomingPolylines.clear();
+    // locations = widget.locations;
+    // locationNames = widget.locationNames;
   }
 
   Future<void> _getCurrentLocation() async {
@@ -83,29 +105,37 @@ class _MapScreenState extends State<MapNavigationScreen> {
       currentLocation = userLocation;
       if (!locations.contains(userLocation)) {
         locations.insert(0, userLocation);
-        locationNames.insert(0, "Vị trí hiện tại");
+        locationNames.insert(0, "Currently location");
+        waypointCompleted = List<bool>.filled(locations.length, false);
+        waypointCompleted[0] = true;
       }
     });
 
-    _fetchRoute();
+    await _fetchRoute(); // Fetch lộ trình từ vị trí hiện tại đến địa điểm 1
     setState(() => isLoading = false);
   }
 
   Future<void> _fetchRoute() async {
-    if (currentLocation == null) return;
+    if (currentLocation == null || currentStep >= locations.length - 1) return;
+
+    List<LatLng> routeLocations = [
+      currentLocation!,
+      locations[currentStep + 1],
+    ];
 
     var result =
-    await NavigationApi().getRouteFromGraphHopper(locations, apiKey);
+        await NavigationApi().getRouteFromGraphHopper(locations, apiKey);
     List<LatLng> routePoints = result["route"];
     List<String> instructions = result["instructions"];
 
     if (routePoints.isNotEmpty) {
       setState(() {
-        polylines.add(Polyline(
-          polylineId: PolylineId("route"),
+        upcomingPolylines.clear();
+        upcomingPolylines.add(Polyline(
+          polylineId: PolylineId("upcoming_route_${currentStep + 1}"),
           points: routePoints,
           color: Colors.blue,
-          width: 2,
+          width: 4,
         ));
         _instructions = instructions;
       });
@@ -117,18 +147,31 @@ class _MapScreenState extends State<MapNavigationScreen> {
 
     setState(() {
       isNavigating = true;
-      currentStep = 0;
+      currentStep = 0; // Bắt đầu từ vị trí hiện tại đến địa điểm 1
     });
 
     if (currentLocation != null) {
       mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(currentLocation!, 24),
+        CameraUpdate.newLatLngZoom(currentLocation!, 18),
       );
     }
 
+    _navigateToNextWaypoint();
+  }
+
+  void _navigateToNextWaypoint() {
+    if (currentStep >= locations.length - 1) {
+      _stopNavigation(); // Đã đến đích cuối, dừng lại
+      return;
+    }
+
+    _fetchRoute(); // Fetch lộ trình đến điểm tiếp theo
+
     positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best, distanceFilter: 5),
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 5,
+      ),
     ).listen((Position position) async {
       if (!isNavigating) return;
 
@@ -136,7 +179,6 @@ class _MapScreenState extends State<MapNavigationScreen> {
 
       setState(() {
         currentLocation = newPosition;
-
         userMarker = Marker(
           markerId: const MarkerId("user_location"),
           position: newPosition,
@@ -149,10 +191,92 @@ class _MapScreenState extends State<MapNavigationScreen> {
         CameraUpdate.newLatLngZoom(newPosition, 18),
       );
 
-      await _fetchRoute();
+      // Kiểm tra khoảng cách đến điểm tiếp theo
+      double distanceToNextWaypoint = Geolocator.distanceBetween(
+        newPosition.latitude,
+        newPosition.longitude,
+        locations[currentStep + 1].latitude,
+        locations[currentStep + 1].longitude,
+      );
+
+      if (distanceToNextWaypoint < 10 && !waypointCompleted[currentStep + 1]) {
+        setState(() {
+          waypointCompleted[currentStep + 1] = true;
+
+          if (upcomingPolylines.isNotEmpty) {
+            Polyline completedRoute = upcomingPolylines.first.copyWith(
+              colorParam: Colors.grey.withOpacity(0.3), // Màu xám nhạt cho route cũ
+              widthParam: 2,
+            );
+            completedPolylines.add(completedRoute);
+            upcomingPolylines.clear(); // Xóa route sắp đi cũ
+          }
+        });
+
+        positionStream?.pause(); // Tạm dừng stream khi đến nơi
+        _showWaypointPopup(context, currentStep + 1);
+
+        // Nếu chưa phải đích cuối, tăng currentStep và fetch lộ trình mới
+        if (currentStep < locations.length - 2) {
+          setState(() {
+            currentStep++;
+            _fetchRoute();//Kiem tra ky lai neu khong duoc thi xoa dong nay .-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+          });
+          _navigateToNextWaypoint(); // Tiếp tục đến điểm tiếp theo
+        } else if (currentStep == locations.length - 2) {
+          if (!isPopupShown) {
+            isPopupShown = true;
+            _showCompletionPopup(context);
+          }
+        }
+      }
     });
   }
 
+  void _showWaypointPopup(BuildContext context, int waypointIndex) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          contentPadding: EdgeInsets.all(20),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Arrived ${locationNames[waypointIndex]}!",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              SizedBox(height: 10),
+              Text(
+                "You have completed the destination ${waypointIndex}/${locations.length - 1}.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  positionStream?.resume();
+                },
+                child: Text("Continue"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
   void _stopNavigation() {
     positionStream?.cancel();
     setState(() {
@@ -224,6 +348,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
                       backgroundColor: Colors.grey[500],
                     ),
                     onPressed: () {
+                      isPopupShown = false;
                       Navigator.of(context).pop();
                     },
                     child: Text("Cancel"),
@@ -234,6 +359,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
                     ),
                     onPressed: () {
                       _shareExperience();
+                      isPopupShown = false;
                       Navigator.of(context).pop();
                     },
                     child: Text("Share"),
@@ -251,11 +377,9 @@ class _MapScreenState extends State<MapNavigationScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-        MomentsScreen(),
+        builder: (context) => MomentsScreen(),
       ),
     );
-    print("User clicked Share!");
   }
 
   @override
@@ -276,7 +400,13 @@ class _MapScreenState extends State<MapNavigationScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                "/my-trip",
+                    (route) => false,
+              );
+            }
         ),
       ),
       body: Stack(
@@ -293,18 +423,21 @@ class _MapScreenState extends State<MapNavigationScreen> {
                         _setMapBounds();
 
                         WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (locations.length > 1) {
+                          if (locations.isNotEmpty && mapController != null) {
                             Future.delayed(Duration(milliseconds: 500), () {
-                              for (LatLng position in locations) {
-                                mapController?.showMarkerInfoWindow(MarkerId(position.toString()));
-                              }
+                              final firstLocation = locations[1];
+                              final markerId =
+                                  MarkerId(firstLocation.toString());
+                              mapController!.showMarkerInfoWindow(markerId);
                             });
                           }
                         });
                       },
                       mapType: MapType.terrain,
                       initialCameraPosition: CameraPosition(
-                        target: locations.isNotEmpty ? locations[0] : const LatLng(0, 0),
+                        target: locations.isNotEmpty
+                            ? locations[0]
+                            : const LatLng(0, 0),
                         zoom: 12,
                       ),
                       markers: {
@@ -315,19 +448,21 @@ class _MapScreenState extends State<MapNavigationScreen> {
                             markerId: MarkerId(position.toString()),
                             position: position,
                             infoWindow: InfoWindow(
-                              title: "Location ${index + 1}: ${locationNames[index]}",
-                              snippet: "Lat: ${position.latitude}, Lng: ${position.longitude}",
+                              title:
+                                  "Location ${index + 1}: ${locationNames[index]}",
+                              snippet:
+                                  "Lat: ${position.latitude}, Lng: ${position.longitude}",
                             ),
                           );
                         }).toSet(),
                       },
-                      polylines: polylines,
+                      polylines: {...completedPolylines, ...upcomingPolylines},
                       myLocationEnabled: true,
                       myLocationButtonEnabled: false,
                       zoomControlsEnabled: true,
                     ),
                     Positioned(
-                      bottom: 260,
+                      bottom: 283,
                       right: 7,
                       child: GestureDetector(
                         onTap: () async {
@@ -335,7 +470,12 @@ class _MapScreenState extends State<MapNavigationScreen> {
                           if (await canLaunchUrl(Uri.parse(phoneNumber))) {
                             await launchUrl(Uri.parse(phoneNumber));
                           } else {
-                            print("Không thể gọi điện");
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Cannot make calls."),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
                           }
                         },
                         child: Image.asset(
@@ -346,7 +486,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
                       ),
                     ),
                     Positioned(
-                      bottom: 215,
+                      bottom: 235,
                       right: 7,
                       child: FloatingActionButton(
                         backgroundColor: Colors.white,
@@ -383,52 +523,30 @@ class _MapScreenState extends State<MapNavigationScreen> {
                       Expanded(
                         child: ListView.builder(
                           controller: scrollController,
-                          itemCount: _instructions.length,
+                          itemCount: locations.length,
                           itemBuilder: (context, index) {
-                            String instruction = _instructions[index].toLowerCase();
-
-                            IconData getIcon(String instruction) {
-                              if (instruction.contains("turn right")) {
-                                return Icons.turn_right;
-                              } else if (instruction.contains("turn left")) {
-                                return Icons.turn_left;
-                              } else if (instruction.contains("keep left")) {
-                                return Icons.arrow_left;
-                              } else if (instruction.contains("keep right")) {
-                                return Icons.arrow_right;
-                              } else if (instruction.contains("turn sharp")) {
-                                return Icons.turn_slight_right;
-                              } else if (instruction.contains("continue")) {
-                                return Icons.straight;
-                              } else if (instruction.contains("at roundabout")) {
-                                return Icons.roundabout_right;
-                              } else if (instruction.contains("arrive at destination")) {
-                                return Icons.flag;
-                              } else {
-                                return Icons.directions;
-                              }
-                            }
-
-                            if (index == currentStep &&
-                                !isPopupShown &&
-                                (instruction.contains("waypoint 1") ||
-                                    instruction.contains("waypoint 2") ||
-                                    instruction.contains("waypoint 3") ||
-                                    instruction.contains("arrive at destination"))) {
-                              isPopupShown = true;
-                              Future.delayed(Duration(milliseconds: 300), () {
-                                _showCompletionPopup(context);
-                              });
-                            }
-
-                            return ListTile(
-                              leading: Icon(getIcon(instruction)),
-                              title: Text(
-                                index == currentStep
-                                    ? "**${_instructions[index]}** (Going...)"
-                                    : _instructions[index],
-                                style: TextStyle(
-                                  fontWeight: index == currentStep ? FontWeight.bold : FontWeight.normal,
+                            bool isCompleted = waypointCompleted[index];
+                            return AnimatedOpacity(
+                              duration: Duration(milliseconds: 300),
+                              opacity: index <= currentStep + 1 ? 1.0 : 0.3,
+                              child: ListTile(
+                                leading: Icon(
+                                  isCompleted ? Icons.check_circle : Icons.directions,
+                                  color: isCompleted ? Colors.green : Colors.grey,
+                                ),
+                                title: Text(
+                                  index == currentStep + 1 && !isCompleted
+                                      ? "**${locationNames[index]}** (Is coming...)"
+                                      : locationNames[index],
+                                  style: TextStyle(
+                                    fontWeight: index == currentStep + 1 && !isCompleted
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  isCompleted ? "Completed" : "Not yet at the location",
+                                  style: TextStyle(color: isCompleted ? Colors.green : Colors.grey),
                                 ),
                               ),
                             );
