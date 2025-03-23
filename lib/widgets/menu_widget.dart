@@ -3,6 +3,8 @@ import 'package:lokaloka/core/styles/colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../features/auth/models/user.dart';
+import '../features/home/screens/home_screen.dart';
 import '../globals.dart';
 
 class Menu extends StatelessWidget {
@@ -14,31 +16,87 @@ class Menu extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            "Are you sure you want to log out?",
-            style: TextStyle(color: AppColors.orangeColor),
+            'Are you sure you want to Sign out?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          contentPadding: EdgeInsets.zero,
+          actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
           actions: [
-            TextButton(
-              style: ButtonStyle(
-                backgroundColor:
-                    MaterialStateProperty.all<Color>(AppColors.primaryColor),
-              ),
-              onPressed: () async {
-                Navigator.pop(context);
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                await prefs.remove("auth_token");
-                await prefs.remove("token_saved_time");
-                Navigator.pushNamedAndRemoveUntil(
-                    context, '/login', (route) => false);
-              },
-              child: Text("Yes", style: TextStyle(color: Colors.white)),
-            ),
-            TextButton(
-              style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all<Color>(Colors.grey),
-              ),
-              onPressed: () => Navigator.pop(context),
-              child: Text("No", style: TextStyle(color: Colors.white)),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    key: const Key('logout_cancel_button'),
+                    onPressed: () {
+                      Navigator.of(context).pop(false);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF78909C), // Gray color
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      minimumSize: Size(0, 45), // Height 45
+                    ),
+                    child: Text(
+                      'No',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    key: const Key('logout_confirm_button'),
+                    onPressed: () async {
+                      SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
+                      await prefs.remove("auth_token");
+                      await prefs.remove("token_saved_time");
+                      travelDays = 0;
+                      cityName = "";
+                      trustPhone = "";
+                      cityTrip = null;
+                      images.clear();
+                      userGlobal = UserNormal(
+                          id: 1,
+                          name: "",
+                          email: "",
+                          full_name: "",
+                          address: "",
+                          avatar: "");
+                      Navigator.pushNamedAndRemoveUntil(
+                          context, '/login', (route) => false);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      minimumSize: Size(0, 45), // Height 45
+                    ),
+                    child: Text(
+                      'Yes',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         );
@@ -70,7 +128,29 @@ class Menu extends StatelessWidget {
                       color: Colors.white,
                       size: 36,
                     ),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        "/home",
+                            (route) => false,
+                        arguments: PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => HomeScreen(),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(-1.0, 0.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            var offsetAnimation = animation.drive(tween);
+
+                            return SlideTransition(
+                              position: offsetAnimation,
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                    },
                   ),
                   Text(
                     "Menu",
@@ -82,7 +162,8 @@ class Menu extends StatelessWidget {
                   CircleAvatar(
                     backgroundImage: userGlobal?.avatar != null
                         ? NetworkImage(userGlobal!.avatar!)
-                        : AssetImage('assets/images/avt-default.png') as ImageProvider,
+                        : AssetImage('assets/images/avt-default.png')
+                            as ImageProvider,
                     radius: 22,
                   ),
                 ],
@@ -114,8 +195,35 @@ class Menu extends StatelessWidget {
                       iconColor: Colors.deepOrangeAccent),
                   _buildMenuItem(context, Icons.info, "About Us", '/about-us',
                       iconColor: Colors.purpleAccent),
-                  _buildMenuItem(context, Icons.exit_to_app, "Sign out", null,
-                      iconColor: Colors.red, isLogout: true),
+                  TextButton(
+                    key: Key("logout_button"),
+                    onPressed: () => logout(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.fromLTRB(15, 10, 0, 0),
+                      minimumSize: Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: Colors.black87, // Màu chữ
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.exit_to_app,
+                          color: Colors.red,
+                          size: 25,
+                        ),
+                        SizedBox(width: 13),
+                        Text(
+                          "Sign Out",
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 ],
               ),
             ),
@@ -127,14 +235,12 @@ class Menu extends StatelessWidget {
 
   Widget _buildMenuItem(
       BuildContext context, IconData icon, String title, String? route,
-      {Color iconColor = Colors.black, bool isLogout = false}) {
+      {Color iconColor = Colors.black}) {
     return ListTile(
       leading: Icon(icon, color: iconColor),
       title: Text(title, style: TextStyle(fontSize: 16)),
       onTap: () async {
-        if (isLogout) {
-          logout(context);
-        } else if (route == "/sos") {
+        if (route == "/sos") {
           final phoneNumber = "tel:$trustPhone";
           if (await canLaunchUrl(Uri.parse(phoneNumber))) {
             await launchUrl(Uri.parse(phoneNumber));

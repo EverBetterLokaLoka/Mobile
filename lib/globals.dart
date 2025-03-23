@@ -10,4 +10,4 @@ String? cityTrip = "";
 
 List<String> images = [];
 
-UserNormal? userGlobal = UserNormal(id: 1, name: "", email: "", full_name: "", address: "", avatar: "");
+UserNormal userGlobal = UserNormal(id: 1, name: "", email: "", full_name: "", address: "", avatar: "");

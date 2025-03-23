@@ -24,7 +24,7 @@ class _SelectItineraryScreenState extends State<SelectItineraryScreen> {
     final fetchedItineraries = await ItineraryApi().fetchItineraries();
 
     final filteredItineraries = fetchedItineraries.where((itinerary) {
-      return itinerary['status'] == 2;
+      return itinerary['status'] == 0 || itinerary['status'] == 2;
     }).toList();
 
     setState(() {

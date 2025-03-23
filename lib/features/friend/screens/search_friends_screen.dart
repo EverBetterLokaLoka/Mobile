@@ -430,14 +430,14 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.message),
-                title: const Text('Send Message'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Logic for sending message
-                },
-              ),
+              // ListTile(
+              //   leading: const Icon(Icons.message),
+              //   title: const Text('Send Message'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     // Logic for sending message
+              //   },
+              // ),
               ListTile(
                 leading: const Icon(Icons.person_remove),
                 title: const Text('Unfriend'),
@@ -461,14 +461,14 @@ class _SearchFriendsScreenState extends State<SearchFriendsScreen> {
                   }
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.block),
-                title: const Text('Block User'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Logic to block user
-                },
-              ),
+              // ListTile(
+              //   leading: const Icon(Icons.block),
+              //   title: const Text('Block User'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     // Logic to block user
+              //   },
+              // ),
             ],
           ),
         );

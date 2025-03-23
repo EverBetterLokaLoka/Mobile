@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:intl/intl.dart';
 import 'package:lokaloka/globals.dart';
 import 'package:translator/translator.dart';
 import '../../../core/utils/apis.dart';
@@ -21,14 +22,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   var imageUrl;
   int selectedForecast = 0;
 
-
-
   TextEditingController _textEditingController = TextEditingController();
-  final TextEditingController _dayController = TextEditingController();
-  final TextEditingController _startDateController = TextEditingController();
-  final TextEditingController _endDateController = TextEditingController();
-  DateTime? _selectedStartDate;
-  DateTime? _selectedEndDate;
   List<Map<String, dynamic>> vietnameseData = [];
   final translator = GoogleTranslator();
 
@@ -43,6 +37,69 @@ class _WeatherScreenState extends State<WeatherScreen> {
     fetchWeather(cityName);
     setState(() {});
     _fetchLocations();
+  }
+
+  void _fetchTodayWeather() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    var data = await WeatherApi().fetchWeather(cityName);
+    if (data != null) {
+      setState(() {
+        weatherData = data;
+        isLoading = false;
+      });
+    }
+  }
+
+// Hàm lấy dữ liệu thời tiết ngày mai
+  void _fetchTomorrowWeather() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    var data = await WeatherApi().fetchWeather(cityName);
+    if (data != null) {
+      // Lọc dữ liệu cho ngày mai
+      List<dynamic> tomorrowData = data['list']
+          .where((item) =>
+              DateTime.parse(item['dt_txt']).day ==
+              DateTime.now().add(Duration(days: 1)).day)
+          .toList();
+
+      setState(() {
+        weatherData = {
+          ...data,
+          'list': tomorrowData,
+        };
+        isLoading = false;
+      });
+    }
+  }
+
+// Hàm lấy dữ liệu thời tiết 5 ngày
+  void _fetchFiveDayWeather() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    var data = await WeatherApi().fetchWeather(cityName);
+    if (data != null) {
+      // Lọc dữ liệu cho 5 ngày tới
+      List<dynamic> fiveDayData = data['list']
+          .where((item) => DateTime.parse(item['dt_txt'])
+              .isBefore(DateTime.now().add(Duration(days: 6))))
+          .toList();
+
+      setState(() {
+        weatherData = {
+          ...data,
+          'list': fiveDayData,
+        };
+        isLoading = false;
+      });
+    }
   }
 
   void fetchWeather(String city) async {
@@ -93,9 +150,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text("Enter city name"),
-          content:
-
-          TypeAheadField<Map<String, String>>(
+          content: TypeAheadField<Map<String, String>>(
             suggestionsCallback: (search) async {
               var results = _filterLocations(search);
               print("Suggestions: $results");
@@ -154,7 +209,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
     setState(() {
       selectedForecast = index;
     });
-    // Gọi API lấy dữ liệu thời tiết tương ứng nếu cần
+    switch (index) {
+      case 0:
+        _fetchTodayWeather();
+        break;
+      case 1:
+        _fetchTomorrowWeather();
+        break;
+      case 2:
+        _fetchFiveDayWeather();
+        break;
+    }
   }
 
   void getCity() async {
@@ -172,7 +237,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     await Future.wait(vietnameseData.map((item) async {
       var translatedName =
-      await translator.translate(item['name'], from: 'vi', to: 'en');
+          await translator.translate(item['name'], from: 'vi', to: 'en');
       item['name'] = translatedName.text;
     }));
   }
@@ -211,11 +276,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
   List<Map<String, String>> _filterLocations(String query) {
     return _locations
         .where((location) => (location['name']?.toString().toLowerCase() ?? '')
-        .contains(query.toLowerCase()))
+            .contains(query.toLowerCase()))
         .map((location) => {
-      'id': location['id'].toString(),
-      'name': location['name'].toString(),
-    })
+              'id': location['id'].toString(),
+              'name': location['name'].toString(),
+            })
         .toList();
   }
 
@@ -289,7 +354,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white)),
-              Text("${(weatherData!['list'][0]['main']['temp'] as num).ceil()}°",
+              Text(
+                  "${(weatherData!['list'][0]['main']['temp'] as num).ceil()}°",
                   style: TextStyle(
                       fontSize: 64,
                       fontWeight: FontWeight.bold,
@@ -302,25 +368,25 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ],
           ),
         ),
-        // Positioned(
-        //   bottom: 10,
-        //   left: 20,
-        //   right: 20,
-        //   child: Row(
-        //     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        //     children: [
-        //       _weatherButton("Today",
-        //           isActive: selectedForecast == 0,
-        //           onTap: () => changeForecast(0)),
-        //       _weatherButton("Tomorrow",
-        //           isActive: selectedForecast == 1,
-        //           onTap: () => changeForecast(1)),
-        //       _weatherButton("5 day",
-        //           isActive: selectedForecast == 2,
-        //           onTap: () => changeForecast(2)),
-        //     ],
-        //   ),
-        // ),
+        Positioned(
+          bottom: 10,
+          left: 20,
+          right: 20,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _weatherButton("Today",
+                  isActive: selectedForecast == 0,
+                  onTap: () => changeForecast(0)),
+              _weatherButton("Tomorrow",
+                  isActive: selectedForecast == 1,
+                  onTap: () => changeForecast(1)),
+              _weatherButton("5 day",
+                  isActive: selectedForecast == 2,
+                  onTap: () => changeForecast(2)),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -352,24 +418,31 @@ class _WeatherScreenState extends State<WeatherScreen> {
       child: Column(
         children: [
           SizedBox(height: 22),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _weatherDetailCard(Icons.air, "Wind Speed",
-                  "${weatherData!['list'][0]['wind']['speed']} km/h"),
-              _weatherDetailCard(Icons.water_drop, "Humidity",
-                  "${weatherData!['list'][0]['main']['humidity']}%"),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _weatherDetailCard(Icons.speed, "Pressure",
-                  "${weatherData!['list'][0]['main']['pressure']} hPa"),
-              _weatherDetailCard(Icons.wb_sunny, "UV Index", "2.3"),
-            ],
-          ),
+
+          // Nếu selectedForecast == 2 thì hiển thị danh sách dự báo 5 ngày
+          if (selectedForecast == 2) _buildForecastFiveDay(weatherData!['list']),
+
+          // Nếu không thì hiển thị chi tiết thời tiết
+          if (selectedForecast != 2) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _weatherDetailCard(Icons.air, "Wind Speed",
+                    "${weatherData!['list'][0]['wind']['speed']} km/h"),
+                _weatherDetailCard(Icons.water_drop, "Humidity",
+                    "${weatherData!['list'][0]['main']['humidity']}%"),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _weatherDetailCard(Icons.speed, "Pressure",
+                    "${weatherData!['list'][0]['main']['pressure']} hPa"),
+                _weatherDetailCard(Icons.wb_sunny, "UV Index", "2.3"),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -479,5 +552,89 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 color: Colors.white)),
       ],
     );
+  }
+
+  Widget _buildForecastFiveDay(Map<String, dynamic> forecastData) {
+    // Lấy danh sách dự báo từ dữ liệu API
+    List<dynamic> forecastList = forecastData["list"] ?? [];
+
+    // Lọc dữ liệu: Chỉ lấy 1 bản ghi mỗi ngày (thường là 12:00 trưa)
+    Map<String, dynamic> dailyForecast = {};
+    for (var entry in forecastList) {
+      String date = entry["dt_txt"].split(" ")[0]; // Lấy ngày (YYYY-MM-DD)
+      if (!dailyForecast.containsKey(date)) {
+        dailyForecast[date] = entry;
+      }
+    }
+
+    return Container(
+      margin: EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue[300],
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.calendar_today, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text(
+                "5 Day Forecast",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
+          ),
+          Divider(color: Colors.white),
+          ...dailyForecast.values.map((weather) => _buildWeatherRow(weather)).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeatherRow(Map<String, dynamic> weather) {
+    String day = _formatDate(weather["dt_txt"]);
+    String icon = weather["weather"][0]["icon"];
+    double minTemp = weather["main"]["temp_min"].toDouble();
+    double maxTemp = weather["main"]["temp_max"].toDouble();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(day, style: TextStyle(fontSize: 16, color: Colors.white)),
+              Row(
+                children: [
+                  Image.network(
+                    "https://openweathermap.org/img/wn/$icon@2x.png",
+                    width: 30,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    "${minTemp.toInt()}° - ${maxTemp.toInt()}°",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Divider(color: Colors.white),
+      ],
+    );
+  }
+
+  String _formatDate(String dtTxt) {
+    DateTime date = DateTime.parse(dtTxt);
+    if (date.day == DateTime.now().day &&
+        date.month == DateTime.now().month &&
+        date.year == DateTime.now().year) {
+      return "Today";
+    }
+    return DateFormat('EEEE').format(date);
   }
 }

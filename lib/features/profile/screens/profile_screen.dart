@@ -58,7 +58,8 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       }
     } catch (e) {
       setState(() {
-        error = "Error: $e";
+        error = "Error: No internet connection."
+            "\nPlease turn on Wi-Fi or mobile data";
         isLoading = false;
       });
     }
@@ -97,7 +98,9 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(error!, style: TextStyle(color: Colors.red)),
+            Align(
+                alignment: Alignment.center,
+                child: Text(error!, style: TextStyle(color: Colors.red))),
             SizedBox(height: 16),
             ElevatedButton(
               onPressed: _fetchUserProfile,

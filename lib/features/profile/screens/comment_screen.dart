@@ -298,7 +298,7 @@ class _CommentScreenState extends State<CommentScreen> {
                     Spacer(),
                     if (currentUserId == comment.userId)
                       IconButton(
-                        icon: Icon(Icons.more_vert, size: 20),
+                        icon: Icon(Icons.more_horiz_outlined, size: 20),
                         onPressed: () => _showCommentMenu(comment),
                       ),
                   ],

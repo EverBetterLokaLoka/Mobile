@@ -3,7 +3,6 @@ import 'package:lokaloka/core/styles/colors.dart';
 import 'package:lokaloka/features/auth/screens/sign_up_screen.dart';
 import '../../../widgets/notice_widget.dart';
 import '../services/auth_services.dart';
-import 'forgot_password_screen.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -21,44 +20,64 @@ class _LoginState extends State<Login> {
   }
 
   final TextEditingController _emailController = TextEditingController();
+  String? _emailError;
   final TextEditingController _passwordController = TextEditingController();
+  String? _passwordError;
   bool _obscurePassword = true;
   final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
-  String message ="";
+  String message = "";
+
+  void _showError(BuildContext context, String message) {
+    showCustomNotice(context, message, "error");
+  }
+
+  void _navigateToHome(BuildContext context) {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/home',
+          (_) => false,
+    );
+  }
 
   Future<void> login(BuildContext context) async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
+      _showError(context, "Please enter both email and password.");
       return;
     }
 
-    var data = await _authService.signIn(email, password, currentPath);
+    try {
+      final result = await _authService.signIn(email, password, currentPath);
 
-    if (data == "NO_INTERNET") {
-      showCustomNotice(context, "No internet connection. Please check your Wi-Fi or mobile data.", "error");
-      return;
-    }
-
-    if (data == "INVALID_RESPONSE") {
-      showCustomNotice(context, "Server error! Please try again later.", "error");
-      return;
-    }
-
-    if (data != null) {
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (Route<dynamic> route) => false);
-    } else {
-      message = "Invalid email or password.\nPlease try again.";
+      switch (result) {
+        case "NO_INTERNET":
+          _showError(context, "No internet connection. Please check your network.");
+          return;
+        case "INVALID_RESPONSE":
+          _showError(context, "Server error. Please try again later.");
+          return;
+        case null:
+          setState(() => message = "Invalid email or password.");
+          return;
+        default:
+          _navigateToHome(context);
+      }
+    } catch (e) {
+      _showError(context, "An unexpected error occurred.");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: Key('scaffold_login'),
       body: SafeArea(
+        key: Key('safe_area_login'),
         child: Container(
+          key: Key('background_container'),
           width: double.infinity,
           height: double.infinity,
           decoration: const BoxDecoration(
@@ -70,27 +89,30 @@ class _LoginState extends State<Login> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 30),
             child: Column(
+              key: Key('column_login'),
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
                 Align(
                   alignment: Alignment.topRight,
                   child: DropdownButton<String>(
+                    key: Key('language_dropdown'),
                     value: "English",
                     icon:
-                    const Icon(Icons.arrow_drop_down, color: Colors.white),
+                        const Icon(Icons.arrow_drop_down, color: Colors.white),
                     items: <String>["English", "Vietnamese"]
                         .map((String value) => DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value,
-                          style: const TextStyle(color: Colors.white)),
-                    ))
+                              value: value,
+                              child: Text(value,
+                                  style: const TextStyle(color: Colors.white)),
+                            ))
                         .toList(),
                     onChanged: (String? newValue) {},
                   ),
                 ),
                 const SizedBox(height: 20),
                 Container(
+                  key: Key('login_form_container'),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -112,6 +134,7 @@ class _LoginState extends State<Login> {
                       children: [
                         const Center(
                           child: Text(
+                            key: Key('sign_in_text'),
                             "Sign In",
                             style: TextStyle(
                               fontSize: 24,
@@ -145,28 +168,44 @@ class _LoginState extends State<Login> {
                           controller: _emailController,
                           decoration: InputDecoration(
                             hintText: "Enter your email",
-                            prefixIcon: const Icon(Icons.email,
-                                color: AppColors.orangeColor),
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                            prefixIcon: const Icon(Icons.email, color: AppColors.orangeColor),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            errorText: _emailError,
                           ),
+                          onChanged: (value) {
+                            setState(() {
+                              _emailError = null;
+                            });
+                          },
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return "Please enter your email.";
-                            }
-                            if (value.contains(' ')) {
-                              return "Invalid email or password. Please try again.";
+                            String trimmedValue = value?.trim() ?? '';
+
+                            if (trimmedValue.isEmpty) {
+                              setState(() {
+                                _emailError = "Please enter your email.";
+                              });
+                              return "";
                             }
                             if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-                                .hasMatch(value)) {
-                              return "Please enter a valid email address.";
-                            }
-                            if (value.isEmpty) {
-                              return "Must contain characters.";
+                                .hasMatch(trimmedValue)) {
+                              setState(() {
+                                _emailError = "Please enter a valid email address.";
+                              });
+                              return "";
                             }
                             return null;
                           },
                         ),
+
+                        if (_emailError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 0, left: 10),
+                            child: Text(
+                              _emailError!,
+                              key: const Key("email_error"),
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ),
                         const SizedBox(height: 15),
 
                         Row(children: [
@@ -177,18 +216,15 @@ class _LoginState extends State<Login> {
                         ]),
                         const SizedBox(height: 5),
                         TextFormField(
-                          key: Key('password_field'),
+                          key: const Key('password_field'),
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             hintText: "Enter your password",
-                            prefixIcon: const Icon(Icons.lock,
-                                color: AppColors.orangeColor),
+                            prefixIcon: const Icon(Icons.lock, color: AppColors.orangeColor),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
                                 color: Colors.grey,
                               ),
                               onPressed: () {
@@ -197,27 +233,71 @@ class _LoginState extends State<Login> {
                                 });
                               },
                             ),
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            errorText: _passwordError,
                           ),
+                          onChanged: (value) {
+                            setState(() {
+                              _passwordError = null;
+                            });
+                          },
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return "Please enter your password.";
+                            String trimmedValue = value?.trim() ?? '';
+
+                            if (trimmedValue.isEmpty) {
+                              setState(() {
+                                _passwordError = "Please enter your password.";
+                              });
+                              return "";
                             }
-                            if (value.contains(' ')) {
-                              return "Invalid email or password. Please try again.";
+                            if (trimmedValue.contains(' ')) {
+                              setState(() {
+                                _passwordError = "Invalid email or password. Please try again.";
+                              });
+                              return "";
                             }
-                            if(message.isNotEmpty){
-                              return message;
-                            }
-                            if (value.isEmpty) {
-                              return "Must contain characters.";
+                            if (message.isNotEmpty) {
+                              setState(() {
+                                _passwordError = message;
+                              });
+                              return "";
                             }
                             return null;
                           },
                         ),
 
+                        if (_passwordError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 0, left: 10),
+                            child: Text(
+                              _passwordError!,
+                              key: const Key("password_error"),
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ),
+
                         const SizedBox(height: 15),
+
+                        // SizedBox(
+                        //   width: double.infinity,
+                        //   child: TextButton(
+                        //     key: Key('forgot_password_button'),
+                        //     onPressed: () {
+                        //       Navigator.push(
+                        //         context,
+                        //         MaterialPageRoute(
+                        //             builder: (context) => ForgotPassword()),
+                        //       );
+                        //     },
+                        //     style: TextButton.styleFrom(
+                        //       foregroundColor: Colors.red,
+                        //     ),
+                        //     child: const Text(
+                        //       "Forgot password?",
+                        //       style: TextStyle(fontSize: 16),
+                        //     ),
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -225,9 +305,9 @@ class _LoginState extends State<Login> {
                 const SizedBox(height: 30),
                 ElevatedButton(
                   key: Key('login_button'),
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      login(context);
+                      await login(context);
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -245,6 +325,7 @@ class _LoginState extends State<Login> {
                 ),
                 const SizedBox(height: 30),
                 Row(
+                  key: Key('divider_or'),
                   children: const [
                     Expanded(child: Divider(thickness: 1, color: Colors.grey)),
                     Padding(
@@ -291,13 +372,16 @@ class _LoginState extends State<Login> {
                   children: [
                     const Text("Don't have an account? "),
                     GestureDetector(
+                      key: Key('signup_navigate'),
                       onTap: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => SignUpScreen()),
+                          MaterialPageRoute(
+                              builder: (context) => SignUpScreen()),
                         );
                       },
                       child: const Text(
+                        key: Key("sign_up_button"),
                         "Sign up.",
                         style: TextStyle(
                           color: Colors.red,

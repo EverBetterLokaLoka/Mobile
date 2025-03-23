@@ -3,12 +3,17 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lokaloka/core/styles/colors.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
 import 'package:lokaloka/features/itinerary/screens/detail_itinerary_screen.dart';
+import 'package:lokaloka/features/moments/screens/create_moment_screen.dart';
 import '../../../core/utils/apis.dart';
+import '../../../core/utils/format_text.dart';
 import '../../../core/utils/transfer_money.dart';
 import '../../../globals.dart';
 import '../../../widgets/app_bar_widget.dart';
 import '../../../widgets/notice_widget.dart';
+import '../../auth/models/user.dart';
 import '../../navigation/screens/map_navigation_screen.dart';
+import '../../profile/screens/account_tab.dart';
+import '../../profile/services/profile_services.dart';
 import '../../weather/services/LocationService.dart';
 import '../services/itinerary_api.dart';
 
@@ -27,16 +32,63 @@ class _MyTripState extends State<MyTripScreen> {
   int selectedTab = 0;
   List<String> locationNames = [];
   List<LatLng> locations = [];
+  final ProfileService _profileService = ProfileService();
+  late final UserNormal user;
+  TextEditingController phoneController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchItineraries();
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchUserProfile() async {
+    final response = await _profileService.getUserProfile();
+
+    if (response != null) {
+      setState(() {
+        user = response;
+      });
+    } else {
+      showCustomNotification(
+        context: context,
+        notification: CustomNotification(
+          message: 'Fail to load user data',
+          isError: true,
+        ),
+      );
+    }
+  }
+
+  void showCustomNotification({
+    required BuildContext context,
+    required Widget notification,
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    OverlayEntry? entry;
+    entry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: Material(
+          color: Colors.transparent,
+          child: notification,
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(entry);
+
+    Future.delayed(duration, () {
+      entry?.remove();
+    });
   }
 
   Future<bool> checkEmergencyPhone(
       BuildContext context, String? trustPhone) async {
-    if (trustPhone != null) {
+    if (trustPhone != "" && trustPhone != null) {
       print("Số điện thoại khẩn cấp: $trustPhone");
       return true;
     }
@@ -72,7 +124,6 @@ class _MyTripState extends State<MyTripScreen> {
       return false;
     }
 
-    TextEditingController phoneController = TextEditingController();
     bool? phoneEntered = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -126,10 +177,51 @@ class _MyTripState extends State<MyTripScreen> {
     }
 
     print("Số điện thoại mới: ${phoneController.text}");
+      _handleUpdate();
     return true;
   }
 
+  Future<void> _handleUpdate() async {
+    print("vao ham");
+    final updatedUser = UserNormal(
+      id: user.id,
+      full_name: user.full_name,
+      dob: user.dob,
+      gender: user.gender,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      emergency_numbers: phoneController.text,
+      name: user.name,
+      avatar: user.avatar,
+    );
+
+    final result = await _profileService.updateUserProfile(updatedUser);
+
+    if (result is bool && result) {
+      trustPhone = phoneController.text;
+      showCustomNotification(
+        context: context,
+        notification: CustomNotification(
+          message: 'Trust phone updated successfully.',
+        ),
+      );
+
+    } else {
+      showCustomNotification(
+        context: context,
+        notification: CustomNotification(
+          message:
+              'An error occurred while updating your profile. Please try again later.',
+          isError: true,
+        ),
+      );
+    }
+  }
+
   Future<void> splitLocation(int? id, Itinerary itinerary) async {
+    if (!mounted) return;
+
     bool hasPhone = await checkEmergencyPhone(context, trustPhone);
     if (!hasPhone) return;
 
@@ -320,13 +412,24 @@ class _MyTripState extends State<MyTripScreen> {
       // String? imageItinerary = await ApiService().fetchImageUrl(cityTrip!);
     });
   }
+  // final Map<String, dynamic>? shareIinterary;
 
   void _shareItinerary(Map<String, dynamic> trip) {
     final String shareText = 'Check out this itinerary: ${trip['title']}!';
-    Navigator.pushNamed(
+
+    Navigator.push(
       context,
-      '/moment',
+      MaterialPageRoute(
+        builder: (context) => CreateMomentScreen(
+          userName: userGlobal.displayName,
+          userLocation: userGlobal.address!,
+          userAvatar: userGlobal.avatar!,
+          shareItinerary: trip,
+          type: "share",
+        ),
+      ),
     );
+
     print("Sharing: $shareText");
   }
 
@@ -363,8 +466,8 @@ class _MyTripState extends State<MyTripScreen> {
     return Scaffold(
       bottomNavigationBar: AppBarCustom(),
       floatingActionButton: Container(
-        width: 65,
-        height: 65,
+        width: 80,
+        height: 80,
         child: FloatingActionButton(
           backgroundColor: Colors.orange,
           shape: CircleBorder(),
@@ -508,6 +611,7 @@ class _MyTripState extends State<MyTripScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
+                        // formatTitle(trip['title']) ?? 'Unknown Title',
                         trip['title'] ?? 'Unknown Title',
                         style: TextStyle(
                             fontSize: 14, fontWeight: FontWeight.bold),
@@ -541,8 +645,7 @@ class _MyTripState extends State<MyTripScreen> {
                           Icon(Icons.place, size: 16, color: Colors.grey),
                           SizedBox(width: 6),
                           Text('${trip['locations']?.length ?? 0} Destinations',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 12)),
+                              style: TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                     ],
@@ -599,15 +702,8 @@ class _MyTripState extends State<MyTripScreen> {
                             ),
                           ),
                         ],
-                        child: ElevatedButton(
-                          onPressed: null,
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: Size(30, 20),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: Icon(Icons.more_vert, color: Colors.black),
-                        ),
+                        child: Icon(Icons.more_horiz_outlined,
+                            color: Colors.black),
                       ),
                       if (selectedTab != 2)
                         ElevatedButton(

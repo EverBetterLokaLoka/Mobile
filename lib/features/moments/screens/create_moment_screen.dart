@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lokaloka/core/utils/apis.dart';
 import 'package:http/http.dart' as http;
 import 'package:lokaloka/features/auth/services/auth_services.dart';
 import 'package:lokaloka/features/itinerary/models/Itinerary.dart';
+import 'package:lokaloka/features/moments/screens/moment_screen.dart';
 import 'package:lokaloka/features/moments/screens/select_itinerary_screen.dart';
 
 import '../models/Feeling.dart';
@@ -15,13 +15,17 @@ class CreateMomentScreen extends StatefulWidget {
   final String userName;
   final String userLocation;
   final String userAvatar;
+  final Map<String, dynamic>? shareItinerary;
+  final String? type;
 
-  const CreateMomentScreen({
-    Key? key,
-    required this.userName,
-    required this.userLocation,
-    required this.userAvatar,
-  }) : super(key: key);
+  const CreateMomentScreen(
+      {Key? key,
+      required this.userName,
+      required this.userLocation,
+      required this.userAvatar,
+      this.shareItinerary,
+      this.type})
+      : super(key: key);
 
   @override
   _CreateMomentScreenState createState() => _CreateMomentScreenState();
@@ -36,22 +40,17 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   late String uploadUrl;
   bool _isExpanded = false;
   bool _isPickingImage = false;
+  bool _isUploading = false;
   List<File> _selectedImages = []; // List to hold selected images
   List<String> _uploadedImageUrls = []; // List to hold uploaded image URLs
   bool isLoading = true;
   Map<String, dynamic>? selectedItinerary;
   bool _isPublishEnabled = false;
-  List<LatLng> latLngLocations = [];
   String? staticMapUrl;
-  List<String> locations = [];
-  static const String graphHopperApiKey =
-      "087f9f85-d3ed-4565-94da-bbe55971cf88";
-
-  final TextEditingController _addressController = TextEditingController();
-  LatLng? _selectedLocation;
   bool _isLoading = false;
-  bool _isPublishing = false; // Thêm biến để theo dõi trạng thái đăng bài
+  bool _isPublishing = false;
   Feeling? selectedFeeling;
+  late ScaffoldMessengerState? _scaffoldMessenger;
 
   @override
   void initState() {
@@ -67,6 +66,12 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     } else if (_dragController.size <= 0.2 && _isExpanded) {
       setState(() => _isExpanded = false);
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scaffoldMessenger = ScaffoldMessenger.of(context);
   }
 
   @override
@@ -86,7 +91,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
   }
 
   void _handlePublish() {
-    if (_isPublishing) return; // Ngăn chặn nhiều lần nhấn nút publish
+    if (_isPublishing) return;
 
     setState(() {
       _isPublishing = true;
@@ -94,7 +99,15 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
     _publishPost().then((success) {
       if (success) {
-        Navigator.pop(context, true); // Trả về true nếu đã publish thành công
+        if (widget.type == "share") {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => MomentsScreen()),
+                (route) => route.settings.name == "/home",
+          );
+        } else {
+          Navigator.pop(context, true);
+        }
       }
       setState(() {
         _isPublishing = false;
@@ -106,6 +119,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     if (_isPickingImage) return;
 
     _isPickingImage = true;
+    _isUploading = true;
 
     try {
       final pickedFiles = await _picker.pickMultiImage();
@@ -120,8 +134,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
             await _uploadImage(token, image);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Token is expired or not found.')));
+          _scaffoldMessenger?.showSnackBar(
+            SnackBar(content: Text("Token is expired or not found.")),
+          );
         }
       }
     } catch (e) {
@@ -129,6 +144,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           .showSnackBar(SnackBar(content: Text('Error picking images: $e')));
     } finally {
       _isPickingImage = false;
+      _isUploading = false;
     }
   }
 
@@ -149,13 +165,16 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           _checkPublishButtonStatus();
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Image uploaded successfully!')));
+        _scaffoldMessenger?.showSnackBar(
+          SnackBar(content: Text("Image uploaded successfully!")),
+        );
       } else {
         final responseData = await response.stream.bytesToString();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text('Upload failed: ${response.statusCode} - $responseData')));
+        _scaffoldMessenger?.showSnackBar(
+          SnackBar(
+              content: Text(
+                  "Upload failed: ${response.statusCode} - $responseData")),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -192,7 +211,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       setState(() {
         selectedItinerary = itinerary;
       });
-      print(itinerary['id']);
+      print("Itinerary selected: ${itinerary['id']}");
     }
   }
 
@@ -232,210 +251,225 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
+      body: _isUploading
+          ? Center(child: CircularProgressIndicator())
+          : Stack(
+              children: [
+                Column(
                   children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundImage: NetworkImage(widget.userAvatar),
-                    ),
-                    SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "${widget.userName}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        )
-                      ],
-                    ),
-                    if (selectedFeeling != null)
-                      Row(
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
                         children: [
-                          SizedBox(width: 4),
-                          Text(
-                            "is feeling ${selectedFeeling!.name} ",
-                            style: TextStyle(fontSize: 14),
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundImage: NetworkImage(widget.userAvatar!),
                           ),
-                          Text(
-                            selectedFeeling!.emoji,
-                            style: TextStyle(fontSize: 20),
+                          SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "${widget.userName}",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              )
+                            ],
                           ),
+                          if (selectedFeeling != null)
+                            Row(
+                              children: [
+                                SizedBox(width: 4),
+                                Text(
+                                  "is feeling ${selectedFeeling!.name} ",
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                                Text(
+                                  selectedFeeling!.emoji,
+                                  style: TextStyle(fontSize: 20),
+                                ),
+                              ],
+                            ),
                         ],
-                      ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: _contentController,
-                        maxLines: null,
-                        decoration: InputDecoration(
-                          hintText:
-                              'Share your moment to connect with others...',
-                          border: InputBorder.none,
-                        ),
-                      ),
-                      if (selectedItinerary != null) ...[
-                        SizedBox(height: 5),
-                        _buildTripCard(selectedItinerary!),
-                      ],
-                      _buildImageWidgets(),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 120),
-            ],
-          ),
-          Positioned(
-            right: 16,
-            bottom: _isExpanded
-                ? MediaQuery.of(context).size.height * 0.5 - 30
-                : MediaQuery.of(context).size.height * 0.1 - 30,
-            child: FloatingActionButton(
-              mini: true,
-              onPressed: _toggleFooter,
-              backgroundColor: Theme.of(context).primaryColor,
-              child: Icon(
-                _isExpanded
-                    ? Icons.keyboard_arrow_down
-                    : Icons.keyboard_arrow_up,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          DraggableScrollableSheet(
-            initialChildSize: 0.1,
-            minChildSize: 0.1,
-            maxChildSize: 0.5,
-            controller: _dragController,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GestureDetector(
-                      onTap: _toggleFooter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
                       ),
                     ),
                     Expanded(
-                      child: ListView(
-                        controller: scrollController,
-                        padding: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: _contentController,
+                              maxLines: null,
+                              decoration: InputDecoration(
+                                hintText:
+                                    'Share your moment to connect with others...',
+                                border: InputBorder.none,
+                              ),
+                            ),
+                            if (selectedItinerary != null) ...[
+                              SizedBox(height: 5),
+                              _buildTripCard(selectedItinerary!),
+                            ] else if (widget.shareItinerary != null) ...[
+                              SizedBox(height: 5),
+                              _buildTripCard(widget.shareItinerary!),
+                            ],
+                            _buildImageWidgets(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 120),
+                  ],
+                ),
+                Positioned(
+                  right: 16,
+                  bottom: _isExpanded
+                      ? MediaQuery.of(context).size.height * 0.5 - 30
+                      : MediaQuery.of(context).size.height * 0.1 - 30,
+                  child: FloatingActionButton(
+                    mini: true,
+                    onPressed: _toggleFooter,
+                    backgroundColor: Theme.of(context).primaryColor,
+                    child: Icon(
+                      _isExpanded
+                          ? Icons.keyboard_arrow_down
+                          : Icons.keyboard_arrow_up,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                DraggableScrollableSheet(
+                  initialChildSize: 0.1,
+                  minChildSize: 0.1,
+                  maxChildSize: 0.5,
+                  controller: _dragController,
+                  builder: (context, scrollController) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(16)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildActionButton(
-                            icon: Icons.image,
-                            label: 'Choose images',
-                            color: Colors.blue,
-                            onTap: _pickImages,
-                          ),
-                          _buildActionButton(
-                            icon: Icons.emoji_emotions,
-                            label: "Emotions",
-                            color: Colors.yellow,
-                            onTap: () {
-                              _showFeelingSelector(context);
-                            },
-                          ),
-                          _buildActionButton(
-                            icon: Icons.people,
-                            label: 'Tag friends',
-                            color: Colors.green,
-                            onTap: () {
-                              // TODO: Implement friend tagging
-                            },
-                          ),
-                          _buildActionButton(
-                            icon: Icons.map,
-                            label: 'Share your itinerary',
-                            color: Colors.red,
-                            onTap: () async {
-                              await _openItinerarySelector();
-                            },
-                          ),
-
-                          // Bottom action buttons
-                          Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text('Cancel'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.grey,
-                                      foregroundColor: Colors.white,
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
+                          GestureDetector(
+                            onTap: _toggleFooter,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                              child: Container(
+                                width: 40,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(2),
                                 ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed:
-                                        _isPublishEnabled && !_isPublishing
-                                            ? _handlePublish
-                                            : null,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          _isPublishEnabled && !_isPublishing
-                                              ? Colors.teal
-                                              : Colors.grey,
-                                      foregroundColor: Colors.white,
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView(
+                              controller: scrollController,
+                              padding: EdgeInsets.zero,
+                              children: [
+                                _buildActionButton(
+                                  icon: Icons.image,
+                                  label: 'Choose images',
+                                  color: Colors.blue,
+                                  onTap: _pickImages,
+                                ),
+                                _buildActionButton(
+                                  icon: Icons.emoji_emotions,
+                                  label: "Emotions",
+                                  color: Colors.yellow,
+                                  onTap: () {
+                                    _showFeelingSelector(context);
+                                  },
+                                ),
+                                // _buildActionButton(
+                                //   icon: Icons.people,
+                                //   label: 'Tag friends',
+                                //   color: Colors.green,
+                                //   onTap: () {
+                                //     // TODO: Implement friend tagging
+                                //   },
+                                // ),
+                                _buildActionButton(
+                                  icon: Icons.map,
+                                  label: 'Share your itinerary',
+                                  color: Colors.red,
+                                  onTap: () async {
+                                    await _openItinerarySelector();
+                                  },
+                                ),
+
+                                // Bottom action buttons
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: Text('Cancel'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.grey,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 12),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                    child: _isPublishing
-                                        ? SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ))
-                                        : Text('Public'),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: _isPublishEnabled &&
+                                                  !_isPublishing
+                                              ? _handlePublish
+                                              : null,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                _isPublishEnabled &&
+                                                        !_isPublishing
+                                                    ? Colors.teal
+                                                    : Colors.grey,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 12),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          child: _isPublishing
+                                              ? SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ))
+                                              : Text('Public'),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -443,37 +477,148 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ],
-      ),
+              ],
+            ),
     );
   }
 
   Widget _buildImageWidgets() {
     if (_uploadedImageUrls.isEmpty) {
-      return Container(); // No images to show
+      return SizedBox();
     }
 
-    return Wrap(
-      spacing: 3,
-      runSpacing: 3,
-      children: _uploadedImageUrls.map((url) {
-        return Container(
-          width: 100, // Set width for the images
-          height: 100, // Set height for the images
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: NetworkImage(url),
+    List<String> limitedImages = _uploadedImageUrls.take(6).toList();
+    bool hasMoreImages = _uploadedImageUrls.length > 6;
+
+    return Column(
+      children: [
+        SizedBox(height: 5),
+        if (limitedImages.length == 3)
+          _buildSpecialLayout(limitedImages) // Layout đặc biệt cho 3 ảnh
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: _getCrossAxisCount(_uploadedImageUrls.length),
+                  crossAxisSpacing: 5,
+                  mainAxisSpacing: 5,
+                ),
+                itemCount: hasMoreImages ? 6 : limitedImages.length,
+                itemBuilder: (context, index) {
+                  if (index == 5 && hasMoreImages) {
+                    return _buildMoreImagesOverlay(
+                        limitedImages[5], _uploadedImageUrls.length - 6);
+                  }
+                  return _buildImageItem(limitedImages[index]);
+                },
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  int _getCrossAxisCount(int length) {
+    if (length == 1) return 1;
+    if (length == 2) return 2;
+    return 3;
+  }
+
+  Widget _buildImageItem(String imageUrl) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(0),
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: Colors.grey[300],
+            child: Center(child: Icon(Icons.image_not_supported)),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMoreImagesOverlay(String imageUrl, int extraCount) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(0),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.grey[300],
+                child: Center(child: Icon(Icons.image_not_supported)),
+              );
+            },
+          ),
+        ),
+        Container(color: Colors.black54),
+        Center(
+          child: Text(
+            '+$extraCount',
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSpecialLayout(List<String> images) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2, // Ảnh lớn chiếm 2 phần
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              images[0],
               fit: BoxFit.cover,
+              height: 300, // Chiều cao cố định
             ),
           ),
-        );
-      }).toList(),
+        ),
+        SizedBox(width: 5),
+        Expanded(
+          flex: 1, // Hai ảnh nhỏ chiếm 1 phần
+          child: Column(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    images[1],
+                    fit: BoxFit.cover,
+                    width: 150,
+                  ),
+                ),
+              ),
+              SizedBox(height: 5),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    images[2],
+                    fit: BoxFit.cover,
+                    width: 150,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -482,8 +627,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
     if (content.isEmpty && _uploadedImageUrls.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Please add some content or images.')),
+        _scaffoldMessenger?.showSnackBar(
+          SnackBar(content: Text("Please add some content or images.")),
         );
       }
       return false;
@@ -492,10 +637,10 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     String? token = await AuthService().getToken();
     if (token == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _scaffoldMessenger?.showSnackBar(
           SnackBar(
               content:
-                  Text('Token is expired or not found. Please log in again.')),
+                  Text("Token is expired or not found. Please log in again.")),
         );
       }
       Navigator.pushReplacementNamed(context, '/login');
@@ -505,8 +650,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
     String? userId = await AuthService().getUserIdFromToken();
     if (userId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User ID not found in token.')),
+        _scaffoldMessenger?.showSnackBar(
+          SnackBar(content: Text("User ID not found in token.")),
         );
       }
       return false;
@@ -534,9 +679,15 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       } catch (e) {
         print('Error parsing itinerary: $e');
       }
+    }else if(widget.shareItinerary != null){
+      try {
+        Itinerary itinerary = Itinerary.fromJson(widget.shareItinerary!);
+        postData['itineraryId'] = itinerary.id;
+      } catch (e) {
+        print('Error parsing itinerary: $e');
+        // Tiếp tục mà không có itinerary
+      }
     }
-
-    print('data to BE: ${jsonEncode(postData)}');
 
     try {
       final response = await http.post(
@@ -550,8 +701,8 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Post published successfully!')),
+          _scaffoldMessenger?.showSnackBar(
+            SnackBar(content: Text("Post published successfully!")),
           );
         }
         return true;
@@ -559,19 +710,18 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         final responseData = response.body;
         if (mounted) {
           print(response.body);
-          ScaffoldMessenger.of(context).showSnackBar(
+          _scaffoldMessenger?.showSnackBar(
             SnackBar(
-              content: Text(
-                  'Failed to publish post: ${response.statusCode} - $responseData'),
-            ),
+                content: Text(
+                    "Failed to publish post: ${response.statusCode} - $responseData'")),
           );
         }
         return false;
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error publishing post: $e')),
+        _scaffoldMessenger?.showSnackBar(
+          SnackBar(content: Text("Error publishing post: $e")),
         );
       }
       return false;

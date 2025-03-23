@@ -9,8 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/url_constant.dart';
 import '../../../core/utils/apis.dart';
 import '../../../widgets/notice_widget.dart';
-import '../../home/screens/term_of_service.dart';
 import '../models/user.dart';
+import '../screens/login_screen.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -78,6 +78,10 @@ class AuthService {
         showCustomNotice(
             context, 'Your account has been created successfully.', 'confirm');
 
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => Login()),
+        );
         // Navigator.pushReplacement(
         //   context,
         //   MaterialPageRoute(builder: (context) => TermOfService()),
@@ -112,44 +116,36 @@ class AuthService {
     return "An account already exits with email the same email address.";
   }
 
-
-  Future<dynamic> signIn(
-      String email, String password, String currentPath) async {
+  Future<dynamic> signIn(String email, String password, String currentPath) async {
     try {
       final response = await _apiService.request(
         path: '/auth/login',
         method: 'POST',
         typeUrl: UrlConstant().baseUrl,
         currentPath: currentPath,
-        data: {
-          'email': email,
-          'password': password,
-        },
+        data: {'email': email, 'password': password},
       );
 
-      if (response.body.isEmpty) {
-        return null;
-      }
+      if (response.body.isEmpty) return null;
 
-      final Map<String, dynamic> responseData = jsonDecode(response.body);
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      final token = responseData["token"] as String?;
 
-      String? token = responseData["token"];
       if (token == null) {
-        print("Token is null");
+        debugPrint("Authentication failed: Token not found");
         return null;
       }
 
       await saveToken(token);
-
-      if (responseData.containsKey('data')) {
-        return UserNormal.fromJson(responseData['data']);
-      }
-      return null;
-    } on SocketException catch (_) {
+      return responseData.containsKey('data')
+          ? UserNormal.fromJson(responseData['data'])
+          : null;
+    } on SocketException {
       return "NO_INTERNET";
-    } on FormatException catch (_) {
+    } on FormatException {
       return "INVALID_RESPONSE";
     } catch (e) {
+      debugPrint("Sign in error: $e");
       return null;
     }
   }
@@ -220,19 +216,18 @@ class AuthService {
 
     bool valid = await isTokenValid();
     if (!valid) {
-      Navigator.pushReplacementNamed(context, '/login');
+      await sessionExpired(context);
+      // Navigator.pushReplacementNamed(context, '/login');
     } else {
       print("Token is still valid!");
     }
   }
 
-  // Add a new method to save the username in SharedPreferences
   Future<void> saveUserName(String username) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString("user_name", username);
   }
 
-// Modify getUserNameFromToken to save the username
   Future<String?> getUserNameFromToken(BuildContext context) async {
     try {
       String? token = await getToken();
@@ -259,7 +254,6 @@ class AuthService {
     }
   }
 
-  // Method to get username from SharedPreferences
   Future<String?> getUserNameFromPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString("user_name");
@@ -275,7 +269,6 @@ class AuthService {
 
       Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
 
-      // Giả sử user ID được lưu dưới khóa 'userId' trong token
       if (decodedToken.containsKey('id')) {
         return decodedToken['id'];
       } else {
@@ -286,5 +279,11 @@ class AuthService {
       print("Error decoding token: $e");
       return null;
     }
+  }
+
+  Future<void> sessionExpired(context) async {
+    await voidShowNotice(context,
+        "Your session has expired due to inactivity or token expiration.\n\nPlease log in again to continue", "confirm");
+    Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
   }
 }

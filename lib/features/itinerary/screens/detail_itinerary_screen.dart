@@ -110,16 +110,16 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
     if (widget.itineraryItems.locations.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text("NO"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text("YES"),
-            ),
-          ],
+          // actions: [
+          //   TextButton(
+          //     onPressed: () => Navigator.of(context).pop(false),
+          //     child: Text("NO"),
+          //   ),
+          //   TextButton(
+          //     onPressed: () => Navigator.of(context).pop(true),
+          //     child: Text("YES"),
+          //   ),
+          // ],
           title: Text('Detail Itinerary'),
         ),
         body: const Center(
@@ -279,56 +279,33 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
       }
     }
 
-    return WillPopScope(
-        onWillPop: () async {
-          bool? shouldPop = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text("Confirm"),
-              content: Text("Are you sure you want to exit?"),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text("NO"),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: Text("YES"),
-                ),
-              ],
-            ),
-          );
-          return shouldPop ?? false;
-        },
-        child: Scaffold(
-          appBar: AppBar(
+    // return WillPopScope(
+        // onWillPop: () async {
+        //   bool? shouldPop = await showDialog<bool>(
+        //     context: context,
+        //     builder: (context) => AlertDialog(
+        //       title: Text("Confirm"),
+        //       content: Text("Are you sure you want to exit?"),
+        //       actions: [
+        //         TextButton(
+        //           onPressed: () => Navigator.of(context).pop(false),
+        //           child: Text("NO"),
+        //         ),
+        //         TextButton(
+        //           onPressed: () => Navigator.of(context).pop(true),
+        //           child: Text("YES"),
+        //         ),
+        //       ],
+        //     ),
+        //   );
+        //   return shouldPop ?? false;
+        // },
+        // child: Scaffold(
+
+    return Scaffold(
+    appBar: AppBar(
             title: Text(widget.title ?? 'Itinerary Detail'),
             centerTitle: true,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back),
-              onPressed: () async {
-                bool? shouldPop = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text("Confirm"),
-                    content: Text("Are you sure you want to exit?"),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: Text("NO"),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: Text("YES"),
-                      ),
-                    ],
-                  ),
-                );
-                if (shouldPop == true) {
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
           ),
           body: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -430,7 +407,7 @@ class _DetailItineraryScreenState extends State<DetailItineraryScreen> {
                     ),
                   ],
                 ),
-        ));
+        );
   }
 
   Widget _buildTimelineTile(
