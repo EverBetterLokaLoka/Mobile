@@ -125,6 +125,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
       final pickedFiles = await _picker.pickMultiImage();
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
         setState(() {
+          print("aaaaa");
           _selectedImages = pickedFiles.map((file) => File(file.path)).toList();
         });
 
@@ -140,8 +141,9 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error picking images: $e')));
+      _scaffoldMessenger?.showSnackBar(
+        SnackBar(content: Text("Error picking images: $e.")),
+      );
     } finally {
       _isPickingImage = false;
       _isUploading = false;
@@ -624,7 +626,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
             child: Image.network(
               images[0],
               fit: BoxFit.cover,
-              height: 300, // Chiều cao cố định
+              height: 220, // Chiều cao cố định
             ),
           ),
         ),
@@ -639,7 +641,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                   child: Image.network(
                     images[1],
                     fit: BoxFit.cover,
-                    width: 150,
+                    width: 80,
                   ),
                 ),
               ),
@@ -650,7 +652,7 @@ class _CreateMomentScreenState extends State<CreateMomentScreen> {
                   child: Image.network(
                     images[2],
                     fit: BoxFit.cover,
-                    width: 150,
+                    width: 80,
                   ),
                 ),
               ),

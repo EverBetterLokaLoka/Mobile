@@ -8,6 +8,7 @@ import 'package:lokaloka/features/profile/services/profile_services.dart';
 import 'package:lokaloka/features/profile/screens/comment_screen.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
+import '../../../core/utils/format_text.dart';
 import '../../itinerary/models/Itinerary.dart';
 import '../../itinerary/screens/detail_itinerary_screen.dart';
 import '../../itinerary/services/itinerary_api.dart';
@@ -550,7 +551,7 @@ class PostCard extends StatelessWidget {
                   images[0].content,
                   fit: BoxFit.cover,
                   width: double.infinity,
-                  height: 340,
+                  height: 390,
                 ),
               ),
             ),
@@ -569,7 +570,7 @@ class PostCard extends StatelessWidget {
                         images[1].content,
                         fit: BoxFit.cover,
                         width: double.infinity,
-                        height: 150,
+                        height: 120,
                       ),
                     ),
                   ),
@@ -584,7 +585,7 @@ class PostCard extends StatelessWidget {
                         images[2].content,
                         fit: BoxFit.cover,
                         width: double.infinity,
-                        height: 150,
+                        height: 120,
                       ),
                     ),
                   ),
@@ -721,7 +722,7 @@ class PostCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    trip.title ?? '',
+                    formatTitle(trip.title!) ?? '',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -61,11 +61,11 @@ class _MyTripState extends State<MyTripScreen> {
     }
   }
 
-  void showCustomNotification({
+  Future<void> showCustomNotification({
     required BuildContext context,
     required Widget notification,
     Duration duration = const Duration(seconds: 3),
-  }) {
+  }) async {
     OverlayEntry? entry;
     entry = OverlayEntry(
       builder: (context) => Positioned(
@@ -281,6 +281,13 @@ class _MyTripState extends State<MyTripScreen> {
     });
 
     print("📍 Địa điểm ngày $currentDay: $locationNames");
+
+    await showCustomNotification(
+      context: context,
+      notification: CustomNotification(
+        message: 'Your are in the day $currentDay of trip!',
+      ),
+    );
 
     Navigator.push(
       context,
@@ -611,8 +618,8 @@ class _MyTripState extends State<MyTripScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        // formatTitle(trip['title']) ?? 'Unknown Title',
-                        trip['title'] ?? 'Unknown Title',
+                        formatTitle(trip['title']) ?? 'Unknown Title',
+                        // trip['title'] ?? 'Unknown Title',
                         style: TextStyle(
                             fontSize: 14, fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,

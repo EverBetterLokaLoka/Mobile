@@ -156,6 +156,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   IconData getWeatherIcon(String weather) {
+    print(weather);
     switch (weather.toLowerCase()) {
       case 'clear':
         return Icons.wb_sunny;
@@ -169,7 +170,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
         return Icons.ac_unit;
       case 'drizzle':
         return Icons.grain;
-      case 'mist':
+      case 'clear':
+        return Icons.sunny;
       case 'fog':
       case 'haze':
         return Icons.blur_on;
@@ -179,8 +181,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   void searchByCity(BuildContext context) {
-    TextEditingController cityController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (context) {
@@ -201,14 +201,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   prefixIcon: Icon(Icons.location_on),
                 ),
                 validator: (value) {
-                  final isValid = _locations.any((location) =>
-                  location['name']?.toString().toLowerCase() ==
-                      value?.toLowerCase());
-                  if (!isValid) {
-                    return 'Please choose valid province.';
-                  }
-                  if (_selectedLocation == null) {
-                    return 'Destination is required.';
+                  if (_selectedLocation == null ||
+                      !_locations.any((location) => location['name'] == _selectedLocation)) {
+                    return 'Please choose a valid province.';
                   }
                   return null;
                 },
@@ -224,7 +219,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
               _selectedLocation = location['name']!;
             },
           ),
-          actions: [
+            actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text("Cancel"),
@@ -232,6 +227,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             TextButton(
               onPressed: () async {
                 String city = _selectedLocation!;
+                _textEditingController.clear();
                 if (city.isNotEmpty) {
                   cityName = city;
                   fetchWeather(city);
@@ -258,7 +254,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
         _fetchTomorrowWeather();
         break;
       case 2:
-        _fetchFiveDayWeather();
+        // _fetchFiveDayWeather();
         break;
     }
   }
@@ -369,8 +365,9 @@ class _WeatherScreenState extends State<WeatherScreen> {
           top: 20,
           left: 10,
           child: GestureDetector(
-            onTap: () {
-              getCity();
+            onTap: () async {
+              // getCity();
+              cityName = (await LocationService.getCurrentCity())!;
               Navigator.pop(context);
             },
             child: Icon(Icons.arrow_back, color: Colors.white),
@@ -414,17 +411,18 @@ class _WeatherScreenState extends State<WeatherScreen> {
           left: 20,
           right: 20,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _weatherButton("Today",
                   isActive: selectedForecast == 0,
                   onTap: () => changeForecast(0)),
+              SizedBox(width: 20),
               _weatherButton("Tomorrow",
                   isActive: selectedForecast == 1,
                   onTap: () => changeForecast(1)),
-              _weatherButton("5 day",
-                  isActive: selectedForecast == 2,
-                  onTap: () => changeForecast(2)),
+              // _weatherButton("5 day",
+              //     isActive: selectedForecast == 2,
+              //     onTap: () => changeForecast(2)),
             ],
           ),
         ),
@@ -523,7 +521,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
               var forecast = weatherData!['list'][index];
               return _hourlyForecastItem(
                   forecast['dt_txt'].split(' ')[1].substring(0, 5),
-                  "${forecast['main']['temp']}°",
+                  "${(forecast['main']['temp']as num).ceil()}°",
                   weatherData);
             }),
           ),
@@ -540,8 +538,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
         decoration: BoxDecoration(
             color: Colors.blue[200], borderRadius: BorderRadius.circular(10)),
         child: Text(
-          "Now: ${weatherData!['list'][0]['main']['temp']}° ${weatherData!['list'][0]['weather'][0]['description']}.\n" +
-              "Temperature range today is ${weatherData!['list'][0]['main']['temp_min']}° to ${weatherData!['list'][0]['main']['temp_max']}°.",
+          "Now: ${(weatherData!['list'][0]['main']['temp']as num).ceil()}° ${weatherData!['list'][0]['weather'][0]['description']}.\n" +
+              "Temperature range today is ${(weatherData!['list'][0]['main']['temp_min']as num).ceil()}° to ${(weatherData!['list'][0]['main']['temp_max']as num).ceil()}°.",
           style: TextStyle(fontSize: 14, color: Colors.white),
         ),
       ),
