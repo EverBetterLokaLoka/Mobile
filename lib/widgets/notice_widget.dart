@@ -98,7 +98,7 @@ Future<bool> showCustomNotice(BuildContext context, String message, String type)
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -121,7 +121,7 @@ Future<bool> showCustomNotice(BuildContext context, String message, String type)
                     ),
                   ),
                   if (type != "error") ...[
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 30),
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).pop(false);

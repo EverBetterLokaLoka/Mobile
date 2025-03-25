@@ -41,16 +41,24 @@ class _MapScreenState extends State<MapNavigationScreen> {
   int? _selectedIndex;
   Marker? newMarker;
   List<LatLng> locations = [
-    LatLng(16.061585909038048, 108.24093957070255),
-    LatLng(16.06190659908386, 108.24216611124919),
-    LatLng(16.0614772285293, 108.24238152031026),
-    LatLng(16.061573737529518, 108.24165141566834)
+    // LatLng(16.064603140719623, 108.24628558279103),
+    // LatLng(16.061478074883002, 108.24141842656643),
+
+  //   Day 2
+    LatLng(16.062985208463225, 108.22979269468084),
+    LatLng(16.06134812409352, 108.22966731087038),
+  //   LatLng(16.061611099784958, 108.23196992178055),
+  //   LatLng(16.060402112286944, 108.24339649279878),
   ];
   List<String> locationNames = [
-    "Back gate of College of Food and Foodstuff",
-    "Duy Tung Hotel Danang",
-    "Electricity, Water - Khai Phuong Mechanical",
-    "Go to Pottery"
+    // "My Khe BEACH",
+    // "GỐM Garden Coffee",
+
+    // day 2
+    "Carp Transforming into Dragon Statue"
+    "Dragon Bridge"
+    // "Son Tra Night Market"
+    // "Ms. Lien's 5-star restaurant"
   ];
   bool isLoading = false;
   bool isPopupShown = false;
@@ -105,7 +113,7 @@ class _MapScreenState extends State<MapNavigationScreen> {
       currentLocation = userLocation;
       if (!locations.contains(userLocation)) {
         locations.insert(0, userLocation);
-        locationNames.insert(0, "Currently location");
+        locationNames.insert(0, "Current location");
         waypointCompleted = List<bool>.filled(locations.length, false);
         waypointCompleted[0] = true;
       }

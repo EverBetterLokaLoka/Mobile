@@ -45,9 +45,6 @@ class AppRoutes {
       case '/weather':
         return MaterialPageRoute(
             builder: (_) => WeatherScreen(), settings: settings);
-      case '/trust-phone':
-        return MaterialPageRoute(
-            builder: (_) => WeatherScreen(), settings: settings);
       case '/moment':
         return MaterialPageRoute(builder: (_) => MomentsScreen());
       case '/friend':
